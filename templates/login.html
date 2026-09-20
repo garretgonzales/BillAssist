@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log In - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body class="auth-page">
+  <section class="card auth-card">
+    <div class="eyebrow">Bill Tracker</div>
+    <h2 class="section-title">Log in</h2>
+
+    {% if error %}
+    <p class="form-error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('login') }}" class="stack">
+      <label>
+        Email
+        <input type="email" name="email" value="{{ email }}" required autofocus>
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit" class="primary">Log in</button>
+    </form>
+
+    <p class="hint">No account yet? <a href="{{ url_for('signup') }}">Sign up</a></p>
+  </section>
+</body>
+</html>

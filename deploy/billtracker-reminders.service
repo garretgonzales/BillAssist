@@ -1,0 +1,13 @@
+[Unit]
+Description=Bill Tracker daily reminder digest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# OS Login derives the VM username from your Google account email
+# (you@example.com -> you_example_com) - check `whoami` on the VM if this
+# ever needs updating.
+User=your-oslogin-username
+WorkingDirectory=/home/your-oslogin-username/BillTracker
+ExecStart=/home/your-oslogin-username/BillTracker/venv/bin/python daily_reminders.py

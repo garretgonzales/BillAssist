@@ -1,0 +1,114 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reminder Settings - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  {{ macros.nav_header('reminder_settings', pending_count, title="Reminder Settings") }}
+
+  <section class="card">
+    <div class="eyebrow">Reminders</div>
+    <h2 class="section-title">General reminder timing</h2>
+    <p class="hint">
+      Applies to every bill whose vendor has no custom setting of its own below.
+      Add more than one lead time (e.g. 2 weeks AND 3 days) to get flagged earlier
+      as well as closer to the due date - a bill starts showing up in reminders
+      from whichever setting is farthest out, and keeps showing up every day
+      until it's paid.
+    </p>
+
+    <table>
+      <tbody>
+        {% for lead in general_leads %}
+        <tr>
+          <td>{{ lead['lead_value'] }} {{ lead['lead_unit'] }}{{ 's' if lead['lead_value'] != 1 else '' }} before due</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('delete_reminder_lead', lead_id=lead['id']) }}" class="inline-form">
+              <input type="hidden" name="vendor" value="">
+              <button type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="hint">No general reminders set.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{{ url_for('add_reminder_lead') }}" class="row">
+      <input type="hidden" name="vendor" value="">
+      <span class="hint">Remind me</span>
+      <input name="lead_value" type="number" min="1" inputmode="numeric" placeholder="e.g. 5" class="narrow" required>
+      <select name="lead_unit">
+        {% for unit in lead_units %}
+        <option value="{{ unit }}">{{ unit }}(s) before</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="primary">Add</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Reminders</div>
+    <h2 class="section-title">Per-vendor reminder timing</h2>
+    <p class="hint">
+      Pick a vendor to set its own lead time(s), replacing the general settings
+      above just for that vendor - it applies to every past and future occurrence
+      of that vendor's bill, not just one instance.
+    </p>
+
+    <form method="get" action="{{ url_for('reminder_settings') }}" class="row">
+      <select name="vendor" onchange="this.form.submit()">
+        <option value="">Choose a vendor...</option>
+        {% for v in vendors %}
+        <option value="{{ v }}" {{ 'selected' if v == selected_vendor else '' }}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </section>
+
+  {% if selected_vendor %}
+  <section class="card">
+    <h2 class="section-title">{{ selected_vendor }}</h2>
+
+    <table>
+      <tbody>
+        {% for lead in vendor_leads %}
+        <tr>
+          <td>{{ lead['lead_value'] }} {{ lead['lead_unit'] }}{{ 's' if lead['lead_value'] != 1 else '' }} before due</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('delete_reminder_lead', lead_id=lead['id']) }}" class="inline-form">
+              <input type="hidden" name="vendor" value="{{ selected_vendor }}">
+              <button type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="hint">No custom setting - using the general reminders above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{{ url_for('add_reminder_lead') }}" class="row">
+      <input type="hidden" name="vendor" value="{{ selected_vendor }}">
+      <span class="hint">Remind me</span>
+      <input name="lead_value" type="number" min="1" inputmode="numeric" placeholder="e.g. 5" class="narrow" required>
+      <select name="lead_unit">
+        {% for unit in lead_units %}
+        <option value="{{ unit }}">{{ unit }}(s) before</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="primary">Add</button>
+    </form>
+  </section>
+  {% endif %}
+
+</body>
+</html>

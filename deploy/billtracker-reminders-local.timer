@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Bill Tracker's daily reminder digest once a day (local machine)
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,134 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  {{ macros.nav_header('settings', pending_count, title="Settings") }}
+
+  <div class="modal-overlay{{ ' open' if message else '' }}" id="message-modal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 class="section-title">Bill Tracker</h2>
+        <button type="button" class="icon-btn" id="close-message-modal" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <p>{{ message }}</p>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="eyebrow">Header</div>
+    <h2 class="section-title">Greeting</h2>
+    <p class="hint">
+      Replaces the default "Hi, {{ current_user.name or current_user.email.split('@')[0] }}" at
+      the top of every page. Saved until you change it again - leave blank
+      and save to go back to the default.
+    </p>
+    <form method="post" action="{{ url_for('save_greeting') }}" class="row">
+      <input name="custom_greeting" placeholder="e.g. Welcome back!" maxlength="60" value="{{ current_user.custom_greeting or '' }}">
+      <button type="submit" class="primary">Save</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Appearance</div>
+    <h2 class="section-title">Dark Mode</h2>
+    <p class="hint">Switch the whole app to a dark background with light text.</p>
+    <form method="post" action="{{ url_for('save_theme_mode') }}">
+      <label class="switch">
+        <input type="checkbox" name="dark_mode" value="1" {{ 'checked' if current_user.theme_mode == 'dark' else '' }} onchange="this.form.submit()">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        Dark Mode
+      </label>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Appearance</div>
+    <h2 class="section-title">Theme Color</h2>
+    <p class="hint">
+      Pick a color to replace the app's default purple across icons, tabs,
+      and buttons. Saved until you change it again - reset to go back to
+      the default.
+    </p>
+    <form method="post" action="{{ url_for('save_theme_color') }}" class="theme-swatch-grid">
+      {% for c in theme_color_presets %}
+      <button type="submit" name="theme_color" value="{{ c }}"
+              class="theme-swatch {{ 'selected' if current_user.theme_color and current_user.theme_color|lower == c|lower else '' }}"
+              style="background-color: {{ c }};" title="{{ c }}" aria-label="Use color {{ c }}"></button>
+      {% endfor %}
+    </form>
+
+    <button type="button" class="btn-link theme-custom-toggle" data-target="theme-custom-picker">Custom color&hellip;</button>
+    <form method="post" action="{{ url_for('save_theme_color') }}" class="row theme-custom-picker" id="theme-custom-picker" hidden>
+      <input type="color" name="theme_color" value="{{ current_user.theme_color or '#4a3aeb' }}">
+      <button type="submit" class="primary">Save</button>
+    </form>
+
+    <form method="post" action="{{ url_for('save_theme_color') }}" class="inline-form">
+      <button type="submit" name="reset" value="1">Reset to default</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Gmail</div>
+    <h2 class="section-title">Gmail Accounts</h2>
+    <p class="hint">
+      Every connected account is scanned for bill emails and gets its own
+      copy of your reminder digest. Add as many as you want - e.g. a
+      personal inbox and a household/bills-only inbox.
+    </p>
+    {% for acct in gmail_accounts %}
+    <div class="row gmail-account-row">
+      <span>{{ acct['email_address'] or ('Account #' ~ acct['id'] ~ ' (not yet verified)') }}</span>
+      <a class="btn-link" href="{{ url_for('gmail_reconnect', account_id=acct['id']) }}">Reconnect</a>
+      <form method="post" action="{{ url_for('gmail_disconnect', account_id=acct['id']) }}" class="inline-form">
+        <button type="submit" class="danger">Disconnect</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="hint">No Gmail accounts connected yet.</p>
+    {% endfor %}
+    <a class="btn-link" href="{{ url_for('gmail_connect') }}">+ Connect a Gmail account</a>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Reminders</div>
+    <h2 class="section-title">Reminder Settings</h2>
+    <p class="hint">Choose when you get reminded about upcoming or overdue bills, generally or per vendor.</p>
+    <a class="btn-link" href="{{ url_for('reminder_settings') }}">Open Reminder Settings &rarr;</a>
+  </section>
+
+  <script>
+    document.querySelectorAll('.theme-custom-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = document.getElementById(btn.dataset.target);
+        target.hidden = !target.hidden;
+        if (!target.hidden) target.querySelector('input[type="color"]').focus();
+      });
+    });
+
+    var messageModal = document.getElementById('message-modal');
+    function closeMessageModal() { messageModal.classList.remove('open'); }
+    document.getElementById('close-message-modal').addEventListener('click', closeMessageModal);
+    messageModal.addEventListener('click', function (e) {
+      if (e.target === messageModal) closeMessageModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMessageModal();
+    });
+  </script>
+</body>
+</html>

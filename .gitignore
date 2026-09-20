@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+bills.db
+bills.db-journal
+bills.db-wal
+bills.db-shm
+*.bak
+credentials.json
+token.json
+flask_secret_key.txt
+.DS_Store

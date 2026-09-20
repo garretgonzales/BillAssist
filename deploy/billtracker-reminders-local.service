@@ -1,0 +1,10 @@
+[Unit]
+Description=Bill Tracker daily reminder digest (local machine, user unit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Edit both paths below to wherever you cloned this repo locally.
+WorkingDirectory=/path/to/BillTracker
+ExecStart=/path/to/BillTracker/venv/bin/python daily_reminders.py

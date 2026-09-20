@@ -1,0 +1,128 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Gmail Matches - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  {{ macros.nav_header('review', pending_count) }}
+
+  <div class="modal-overlay{{ ' open' if message else '' }}" id="message-modal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 class="section-title">Bill Tracker</h2>
+        <button type="button" class="icon-btn" id="close-message-modal" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <p>{{ message }}</p>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="eyebrow">Pending matches</div>
+    <p class="hint">
+      Searches recent mail for bill/invoice-shaped messages (via "Scan Gmail now" above).
+      Nothing is added to your bill list until you approve it below - amount and due date
+      are best-effort guesses, double check them.
+    </p>
+  </section>
+
+  <div class="review-carousel">
+  <section class="card">
+    <div class="eyebrow">Reminders</div>
+    <h2 class="section-title">Bill reminders</h2>
+    <form method="post" action="{{ url_for('send_reminder') }}">
+      <button type="submit" class="primary">Send reminder now</button>
+    </form>
+    <p class="hint">
+      Emails yourself a summary of unpaid bills that are overdue, due within
+      your general reminder window, or have no due date set - or sooner, for
+      any vendor with its own custom lead time set on the
+      <a href="{{ url_for('reminder_settings') }}">Reminder Settings</a> page.
+      Also runs automatically once per day (whenever you have the app open) -
+      this button is for testing it or triggering one on demand. Requires
+      Gmail send permission; if you set up the read-only scan before this
+      feature existed, clicking the button once will prompt you to grant the
+      extra permission.
+    </p>
+    {% if last_reminder_sent %}
+    <p class="hint">Last sent: {{ last_reminder_sent[:19].replace('T', ' ') }} UTC</p>
+    {% else %}
+    <p class="hint">No reminder has been sent yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    {% for p in pending %}
+    <form method="post" action="{{ url_for('approve_pending', pending_id=p['id']) }}" class="pending-row">
+      <div class="snippet">&ldquo;{{ p['snippet'] }}&rdquo; <span class="hint">({{ p['email_date'] }})</span></div>
+      <div class="row">
+        <input name="vendor" value="{{ p['vendor'] or '' }}" placeholder="Vendor">
+        <input name="amount" type="number" step="0.01" inputmode="decimal" value="{{ p['amount'] if p['amount'] is not none else '' }}" placeholder="Amount">
+        <input name="due_date" type="date" value="{{ p['due_date'] or '' }}">
+        <span class="hint">Repeats every</span>
+        <input name="recurrence_interval" type="number" min="1" inputmode="numeric" placeholder="1" class="narrow">
+        <select name="recurrence_unit">
+          <option value="">(no repeat)</option>
+          <option value="day">day(s)</option>
+          <option value="week">week(s)</option>
+          <option value="month" selected>month(s)</option>
+          <option value="year">year(s)</option>
+        </select>
+        <button type="submit">Approve</button>
+        <button type="submit" formaction="{{ url_for('reject_pending', pending_id=p['id']) }}" class="danger">Reject</button>
+      </div>
+    </form>
+    {% else %}
+    <p>No pending matches. Run a scan above.</p>
+    {% endfor %}
+  </section>
+  </div>
+
+  <script>
+    // Scan/action results (new matches found, no new matches, reminder
+    // sent, Gmail auth result...) all land here as one `message` - shown
+    // as a real modal instead of a toast/banner, so it can't be missed
+    // or accidentally scrolled past on mobile.
+    var messageModal = document.getElementById('message-modal');
+    function closeMessageModal() { messageModal.classList.remove('open'); }
+    document.getElementById('close-message-modal').addEventListener('click', closeMessageModal);
+    messageModal.addEventListener('click', function (e) {
+      if (e.target === messageModal) closeMessageModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMessageModal();
+    });
+
+    // Approving/rejecting a pending match submits a form, which reloads
+    // this page - by default the browser resets scroll to the top, which
+    // is disorienting when you're working down a long list. Save the
+    // scroll position right before the row's own form submits, restore
+    // it once the reloaded page has finished loading.
+    var SCROLL_KEY = 'billtracker-review-scroll';
+    document.querySelectorAll('.pending-row button[type="submit"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch (e) {}
+      });
+    });
+    window.addEventListener('load', function () {
+      var saved = null;
+      try { saved = sessionStorage.getItem(SCROLL_KEY); } catch (e) {}
+      if (saved !== null) {
+        window.scrollTo(0, parseInt(saved, 10));
+        try { sessionStorage.removeItem(SCROLL_KEY); } catch (e) {}
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+{% macro review_icon(pending_count) %}
+{% if pending_count %}
+<svg class="review-status-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <path d="M23.954,5.542,15.536,13.96a5.007,5.007,0,0,1-7.072,0L.046,5.542C.032,5.7,0,5.843,0,6V18a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V6C24,5.843,23.968,5.7,23.954,5.542Z"></path>
+  <path d="M14.122,12.546l9.134-9.135A4.986,4.986,0,0,0,19,1H5A4.986,4.986,0,0,0,.744,3.411l9.134,9.135A3.007,3.007,0,0,0,14.122,12.546Z"></path>
+</svg>
+{% else %}
+<svg class="review-status-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <path d="m14.121,17.122l6.879-6.879v-6.242c0-2.206-1.794-4-4-4H7C4.794,0,3,1.794,3,4v6.243l6.878,6.879c1.134,1.133,3.11,1.133,4.243,0Zm-6.802-8.585c-.404-.376-.428-1.009-.052-1.413.377-.405,1.011-.426,1.413-.052l1.851,1.721c.269.268.666.269.911.024l3.863-3.724c.398-.384,1.031-.371,1.414.025.384.397.372,1.031-.025,1.414l-3.851,3.712c-.504.504-1.171.756-1.839.756-.673,0-1.348-.256-1.861-.768l-1.824-1.696Zm16.681,4.171v6.292c0,2.757-2.243,5-5,5H5c-2.757,0-5-2.243-5-5v-6.292c0-.746.184-1.472.5-2.137l7.965,7.966c.945.944,2.2,1.464,3.536,1.464s2.591-.52,3.535-1.464l7.965-7.966c.316.665.5,1.392.5,2.137Z"></path>
+</svg>
+{% endif %}
+{% endmacro %}
+
+{% macro totals_content(recurring_payment_total, tracked_total_amount, totals_bills) %}
+<p class="hint">Every bill you track once each, independent of month or paid status - adding or editing bills here never changes the Overview totals or chart.</p>
+
+<div class="stat-grid">
+  <div class="stat-tile">
+    <div class="stat-label">Recurring Payments</div>
+    <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ recurring_payment_total }}">${{ '%.2f' % recurring_payment_total }}</span></div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Total Amount Owed</div>
+    <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ tracked_total_amount }}">${{ '%.2f' % tracked_total_amount }}</span></div>
+  </div>
+</div>
+
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr>
+      <th>Vendor</th><th>Amount</th><th>Total Amount</th><th>Category</th><th>Repeats</th><th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for bill in totals_bills %}
+    <tr class="{{ bill['status'] }}">
+      <td>
+        <span class="category-icon">{{ bill_icon(bill) }}</span>
+        {% if bill['notes'] %}
+        <details class="notes-details">
+          <summary>{{ bill['vendor'] }}</summary>
+          <div class="notes-content">{{ bill['notes'] }}</div>
+        </details>
+        {% else %}
+        {{ bill['vendor'] }}
+        {% endif %}
+      </td>
+      <td>{{ '$%.2f' % bill['amount'] if bill['amount'] is not none else '-' }}</td>
+      <td>{{ 'Ongoing' if bill['until_cancelled'] else ('$%.2f' % bill['total_amount'] if bill['total_amount'] is not none else '-') }}</td>
+      <td>{{ bill['category'] or '-' }}</td>
+      <td>
+        {% if bill['recurrence_unit'] %}
+        {{ bill['recurrence_interval'] }} {{ bill['recurrence_unit'] }}{{ 's' if bill['recurrence_interval'] != 1 else '' }}
+        {% else %}
+        <svg class="repeats-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6L6 18"></path>
+          <path d="M6 6l12 12"></path>
+        </svg>
+        {% endif %}
+      </td>
+      <td>
+        <span class="status-pill {{ bill['status'] }}">{{ bill['status'] }}</span>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No recurring bills or tracked totals yet - set a "Total amount" when adding or editing a bill to see it here.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}
+
+{# page: 'index' | 'edit' | 'settings' | 'reminder_settings' | 'review' -
+   decides which nav items show, since that varies systematically by page
+   rather than arbitrarily (see the DRY-up that introduced this macro).
+   Reminder Settings is nested under Settings - reached via the Settings
+   button, not its own top-level nav item. #}
+{% macro page_title(page, pending_count, title=None) %}
+{% if page == 'review' %}
+<h1 class="page-title">
+  {{ review_icon(pending_count) }}
+  Review Gmail Matches
+</h1>
+{% elif title %}
+<h1 class="page-title">{{ title }}</h1>
+{% else %}
+<h1 class="page-title greeting">{{ current_user.custom_greeting or ('Hi, ' + (current_user.name or current_user.email.split('@')[0])) }}</h1>
+{% endif %}
+{% endmacro %}
+
+{% macro topbar_nav(page, pending_count) %}
+<header class="topbar">
+  <nav class="taskbar-nav">
+    {% if page == 'review' %}
+    <a class="btn-link" href="{{ url_for('index') }}">&larr; Back to bills</a>
+    {% elif page == 'reminder_settings' %}
+    <a class="btn-link" href="{{ url_for('settings') }}">&larr; Back to Settings</a>
+    {% elif page == 'settings' %}
+    <a class="btn-link" href="{{ url_for('index') }}">&larr; Back to bills</a>
+    {% endif %}
+    {% if page != 'review' %}
+    <a class="btn-link" href="{{ url_for('review') }}">
+      {{ review_icon(pending_count) }}
+      Review Gmail Matches
+      {% if pending_count %}<span class="badge">{{ pending_count }}</span>{% endif %}
+    </a>
+    {% endif %}
+    <form method="post" action="{{ url_for('gmail_scan') }}" class="inline-form">
+      <button type="submit"><span class="btn-icon">{{ icon_svg('envelope-download') }}</span>Scan Gmail now</button>
+    </form>
+    {% if page not in ('settings', 'reminder_settings') %}
+    <a class="btn-link" href="{{ url_for('settings') }}"><span class="btn-icon">{{ icon_svg('cog') }}</span>Settings</a>
+    {% endif %}
+  </nav>
+</header>
+{% endmacro %}
+
+{# Convenience wrapper for every page except index.html, which needs the
+   title and topbar split apart so it can wrap only the topbar (and
+   everything below it) in the single-overlay privacy shield - see
+   index.html and .privacy-shield in style.css. #}
+{% macro nav_header(page, pending_count, title=None) %}
+{{ page_title(page, pending_count, title) }}
+{{ topbar_nav(page, pending_count) }}
+{% endmacro %}

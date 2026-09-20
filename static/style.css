@@ -1,0 +1,1351 @@
+:root {
+  /* A bolder, more saturated indigo than the old soft blue - solid
+     fills of this color (not just thin borders/small accents) are what
+     create the reference design's block-based separation, so it needs
+     to read clearly with white text on top of it. */
+  --accent: #4a3aeb;
+  --accent-dark: #372ec2;
+  --accent-soft: #ece9fd;
+  --on-accent: #ffffff;
+  --bg: #f4f4f8;
+  --card-bg: #ffffff;
+  --border: #ececf3;
+  --text: #16161f;
+  --text-muted: #6b7280;
+  --danger-bg: #fde8e8;
+  --danger-border: #f5b5b5;
+  --danger-text: #b42318;
+  --paid-bg: #e9f9ef;
+  --paid-text: #15803d;
+  --unpaid-bg: #fff4e5;
+  --unpaid-text: #b45309;
+  /* Flat neutral chip used by plain buttons/links/notes (not the accent
+     or danger ones) - its own variable rather than a literal color so
+     dark mode can swap in a dark-mode-appropriate pair instead of
+     staying a near-white chip with near-white text on top of it. */
+  --btn-bg: #f3f3f7;
+  --btn-bg-hover: #e9e9f0;
+  /* Frosted-glass backdrop behind the "Click to reveal"/"Tap to unlock"
+     privacy veil - needs its own variable (not derived from --bg) since
+     it carries an alpha channel for the blur to show through. */
+  --veil-bg: rgba(244, 244, 248, 0.55);
+}
+
+* { box-sizing: border-box; }
+
+/* Visible by default (not activated by a JS class) so it's guaranteed
+   to cover the page from the very first paint - the inline script right
+   after it in index.html decides within the same tick whether to hide
+   it immediately or let it show briefly, per whether this is a first
+   visit or a return after being away a while. */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  opacity: 1;
+  transition: opacity .4s ease;
+}
+
+.splash-screen.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-logo {
+  font-size: 2.1rem;
+  font-weight: 700;
+}
+
+.splash-tag {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Page title - sits above the topbar, independent of it, no background
+   of its own (just the page's own gradient behind it). */
+.page-title {
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+  text-transform: capitalize;
+  color: var(--text);
+}
+
+.page-title.greeting {
+  font-size: 3.07rem;
+  line-height: 1.15;
+  margin: 0;
+  padding: 1.5rem 1.5rem 1rem;
+  /* One solid color for the whole header zone (greeting + nav buttons),
+     a different one for the rest of the page below - same block-based
+     separation as the reference, rather than a plain page title. Only
+     rounded on top; see .page-title.greeting + .privacy-shield .topbar
+     below, which rounds only the bottom, so the two sit flush as one
+     shape. */
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 20px 20px 0 0;
+  /* A long custom greeting (or long name) wraps onto its own line(s)
+     instead of overflowing the page horizontally or getting clipped -
+     break-word also covers a single very long word with no spaces to
+     wrap at. */
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Solid fill instead of a bordered white bar - separation from the
+     page comes from the color block itself, same as the reference's
+     header sections, rather than a thin outline. Now holds only the
+     nav buttons, not the page title. */
+  background: var(--accent);
+  border: none;
+  border-radius: 20px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Only when the greeting sits directly above it (index page) - other
+   pages' plain (uncolored) title isn't visually joined to the topbar,
+   so it keeps its own full rounding there instead. .topbar is nested
+   inside .privacy-shield now (not a direct sibling of the greeting
+   anymore), hence the descendant selector rather than +. */
+.page-title.greeting + .privacy-shield .topbar {
+  border-radius: 0 0 20px 20px;
+}
+
+.taskbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.taskbar-nav .btn-link,
+.taskbar-nav .inline-form button {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.75rem;
+  /* The default border color is a near-invisible light gray, tuned for
+     sitting on a white card - too faint to read against the topbar's
+     solid indigo fill, so it's overridden specifically here. */
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* .btn-link.active is solid accent + white text, which would vanish
+   against the topbar's own now-solid-accent background - inverted here
+   so it still reads as clearly "selected" against that fill. */
+.taskbar-nav .btn-link.active {
+  background: var(--on-accent);
+  border-color: var(--on-accent);
+  color: var(--accent);
+}
+
+.inline-form {
+  display: inline;
+}
+
+.btn-link.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 1.25rem;
+  text-transform: capitalize;
+}
+
+.card {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+input, select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+input:focus, select:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
+input.narrow {
+  width: 3.5rem;
+}
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  margin-top: 4rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stack input {
+  font-size: 1rem;
+}
+
+.form-error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+tr.paid td {
+  color: var(--text-muted);
+}
+
+.actions form {
+  display: inline;
+}
+
+button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+button:hover {
+  background: var(--btn-bg-hover);
+}
+
+button.primary, button[type="submit"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+button.primary:hover, button[type="submit"]:hover {
+  background: var(--accent-dark);
+}
+
+button.danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+.theme-swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+button.theme-swatch {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+
+button.theme-swatch:hover {
+  transform: scale(1.08);
+}
+
+button.theme-swatch.selected {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--accent);
+}
+
+.theme-custom-toggle {
+  margin-bottom: 0.75rem;
+}
+
+.theme-custom-picker {
+  margin-bottom: 0.75rem;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-track {
+  position: relative;
+  width: 2.6rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--card-bg);
+  transition: transform 0.15s ease;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(1.1rem);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+.gmail-account-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gmail-account-row:last-of-type {
+  border-bottom: none;
+}
+
+.gmail-account-row span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.btn-link {
+  display: inline-block;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.btn-link:hover {
+  background: var(--btn-bg-hover);
+}
+
+.badge {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 10px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  margin-left: 0.3rem;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-pill.paid {
+  background: var(--paid-bg);
+  color: var(--paid-text);
+}
+
+.status-pill.unpaid {
+  background: var(--unpaid-bg);
+  color: var(--unpaid-text);
+}
+
+.income-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+.review-status-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+.btn-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Category icon badge, same soft-circle-with-colored-icon treatment as
+   the Mint reference's transaction list rows. */
+.category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* em, not px - scales with whatever font-size is active wherever this
+     is used, so it always reads as "the same size as the text" instead
+     of a fixed size that only looks right in one context. */
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-right: 0.4em;
+  vertical-align: middle;
+}
+
+.category-icon svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+.icon-picker {
+  width: 100%;
+}
+
+.icon-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.icon-picker-option {
+  padding: 0.3rem;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.icon-picker-option .category-icon {
+  width: 1.8em;
+  height: 1.8em;
+  font-size: 1rem;
+}
+
+.icon-picker-option:hover {
+  border-color: var(--border);
+}
+
+.icon-picker-option.selected {
+  border-color: var(--accent);
+}
+
+.repeats-empty-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  color: var(--text-muted);
+}
+
+.notes-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.notes-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.notes-details summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: 0.3rem;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.notes-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.notes-content {
+  margin-top: 0.3rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--btn-bg);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  max-width: 260px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.income-veiled {
+  cursor: pointer;
+}
+
+.income-header-veiled {
+  visibility: hidden;
+}
+
+.income-veil-label {
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.income-group-summary td {
+  font-weight: 600;
+}
+
+.income-group-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.income-group-chevron {
+  transition: transform 0.15s ease;
+}
+
+.income-group-toggle[aria-expanded="true"] .income-group-chevron {
+  transform: rotate(90deg);
+}
+
+.income-group-detail td:first-child {
+  padding-left: 1.6rem;
+}
+
+.notice {
+  background: var(--accent-soft);
+  border: 1px solid #c5dcf3;
+  padding: 0.6rem;
+  border-radius: 10px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 320px;
+  background: var(--text);
+  color: var(--bg);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-text {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--bg);
+  opacity: 0.7;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+.pending-row {
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+}
+
+.snippet {
+  font-style: italic;
+  margin-bottom: 0.4rem;
+}
+
+.search-row {
+  margin-bottom: 1rem;
+}
+
+/* ---- dashboard ---- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.stat-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.stat-label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+
+.pie-row {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.donut {
+  width: 160px;
+  height: 160px;
+  flex: none;
+}
+
+.donut-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 18;
+}
+
+.pie-slice {
+  fill: none;
+  stroke-width: 18;
+  stroke-linecap: butt;
+  transition: stroke-dasharray 1s ease;
+}
+
+.donut-total {
+  font-size: 16px;
+  font-weight: 700;
+  fill: var(--text);
+  text-anchor: middle;
+}
+
+.donut-caption {
+  font-size: 8px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.legend-name {
+  flex: 1;
+}
+
+.legend-amount {
+  color: var(--text-muted);
+}
+
+.legend-pct {
+  font-weight: 700;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+.stat-tile-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s ease, transform .15s ease;
+}
+
+.stat-tile-link:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ---- bills header / tabs ---- */
+
+.bills-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bills-header .section-title {
+  margin-bottom: 0;
+}
+
+.tabs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.tabs-row .tabs {
+  margin-bottom: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.tab {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---- modal ---- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 31, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  z-index: 100;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.modal-panel {
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 1.5rem;
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(15, 15, 31, 0.28);
+  transform: translateY(16px) scale(.97);
+  transition: transform .22s ease;
+}
+
+.modal-overlay.open .modal-panel {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header .section-title {
+  margin-bottom: 0;
+}
+
+/* ---- icon buttons / row actions ---- */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+}
+
+.icon-btn:hover {
+  background: var(--btn-bg-hover);
+}
+
+a.icon-btn {
+  text-decoration: none;
+}
+
+.pay-form {
+  display: inline;
+}
+
+button.icon-btn.pay-toggle {
+  background: transparent;
+  border-color: transparent;
+}
+
+button.icon-btn.pay-toggle:hover {
+  background: var(--bg);
+}
+
+.pay-icon {
+  overflow: visible;
+}
+
+.pay-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2;
+  transition: stroke .3s ease, fill .3s ease;
+}
+
+.pay-check {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  transition: stroke-dashoffset .3s ease .05s;
+}
+
+.pay-toggle.paid .pay-ring {
+  fill: var(--paid-text);
+  stroke: var(--paid-text);
+}
+
+.pay-toggle.paid .pay-check {
+  stroke-dashoffset: 0;
+}
+
+.pay-toggle.animating {
+  transform: scale(1.12);
+  transition: transform .18s ease;
+}
+
+.actions {
+  width: 194px;
+}
+
+.actions-viewport {
+  overflow: hidden;
+  width: 194px;
+}
+
+.actions-track {
+  display: flex;
+  width: 388px;
+  transition: transform .25s ease;
+}
+
+.actions-track.confirming {
+  transform: translateX(-194px);
+}
+
+.action-row, .confirm-row {
+  width: 194px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.confirm-row {
+  justify-content: flex-end;
+}
+
+.confirm-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-right: 0.2rem;
+}
+
+button.confirm-yes {
+  /* A fixed solid red, not var(--danger-text) - that variable is tuned
+     as a foreground text color against --danger-bg (dark red in light
+     mode, but light salmon in dark mode, meant to sit on a dark
+     background), not as a button fill; reusing it here as a background
+     would turn this into an unreadable pale-pink button in dark mode. */
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+  padding: 0.4rem 0.7rem;
+}
+
+button.confirm-yes:hover {
+  background: #93190f;
+}
+
+.confirm-no {
+  padding: 0.4rem 0.7rem;
+}
+
+/* ---- section switcher ---- */
+/* One panel shown at a time, all rendered at the same full width - a tab
+   row (reusing the .tabs/.tab pill styling used elsewhere) switches which
+   one, instead of the old side-by-side "aside cards you click on" layout,
+   which produced two identical arrow icons once a 3rd card was added and
+   never let same-sized cards sit next to each other. */
+
+.panel-switcher {
+  margin-bottom: 1rem;
+}
+
+.focus-stage {
+  display: block;
+}
+
+.focus-panel {
+  display: none;
+}
+
+/* Horizontal slide-in when a new tile is selected via the tab row -
+   direction depends on whether the newly selected tab sits to the
+   right or left of the previous one (set by JS). display:none -> block
+   can't itself be transitioned, but a CSS animation always plays from
+   its 0% keyframe regardless, so it works fine across that swap. */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.focus-panel.is-focused {
+  display: block;
+}
+
+.focus-panel.is-focused.slide-from-right {
+  animation: slide-in-right .25s ease;
+}
+
+.focus-panel.is-focused.slide-from-left {
+  animation: slide-in-left .25s ease;
+}
+
+.mobile-only-tab {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* Touch targets + form usability on phones */
+  body {
+    margin: 1rem auto;
+  }
+
+  .taskbar-nav {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding-bottom: 0.15rem;
+  }
+
+  .taskbar-nav .btn-link,
+  .taskbar-nav .inline-form,
+  .taskbar-nav .inline-form button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  input, select {
+    font-size: 16px; /* below 16px, iOS Safari zooms in on focus */
+  }
+
+  .row input, .row select {
+    flex: 1 1 160px;
+  }
+
+  .row input.narrow {
+    flex: 0 0 3.5rem;
+  }
+
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  button, .btn-link, .tab {
+    padding: 0.55rem 0.9rem; /* taller tap targets than the mouse-sized default */
+  }
+
+  .modal-panel {
+    padding: 1.1rem;
+  }
+
+  .stat-value {
+    font-size: 1.45rem;
+  }
+
+  /* Reminders + Pending matches (review.html) as swipeable slides
+     instead of stacked full-height cards, to save vertical space. */
+  .review-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+    margin: 0 -1rem 1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .review-carousel > .card {
+    flex: 0 0 88%;
+    scroll-snap-align: start;
+    margin-bottom: 0;
+  }
+
+  /* Overview/Your Bills/Estimated Payments/Totals, all inline in one
+     row with no scrolling - equal-width, shrinking together rather
+     than sizing to each label's text, so all four always fit. Long
+     labels (Estimated Payments) wrap to a second line instead of
+     overflowing. No horizontal scrolling anywhere on this page now -
+     switching tiles is click/tap only, via these tabs. */
+  #panel-switcher {
+    flex-wrap: nowrap;
+  }
+
+  .mobile-only-tab {
+    display: inline-block;
+  }
+
+  #panel-switcher .tab {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.4rem;
+    /* The row (flex, default align-items:stretch) makes every tab match
+       the height of the tallest one (e.g. "Estimated Payments" wrapping
+       to 2 lines) - without this, a shorter single-line tab's text sits
+       at the top of that taller bubble instead of filling/centering in
+       it, leaving visible empty space below. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Totals is reached via its own tab on mobile instead of the flip
+     card - neutralize the 3D flip entirely here rather than just
+     hiding the button, since perspective/preserve-3d on in-flow
+     content (the front face) is what caused the repeated touch-scroll
+     bugs, even when the flip itself was never triggered. */
+  .flip-scene {
+    perspective: none;
+  }
+
+  .flip-card,
+  .flip-card.flipped {
+    transform: none;
+    transition: none;
+  }
+
+  .flip-face.flip-back {
+    display: none;
+  }
+
+  #flip-to-totals {
+    display: none;
+  }
+}
+
+/* Safety net: a stale localStorage focus of "totals" from a mobile
+   session should never show this panel if later loaded past the mobile
+   breakpoint (e.g. resizing a window) - desktop reaches Totals via the
+   flip card instead. */
+@media (min-width: 721px) {
+  .focus-panel.mobile-only-panel {
+    display: none !important;
+  }
+}
+
+/* Tables can outgrow a phone screen (Actions column alone is ~200px) -
+   scope the scroll to the table itself so the page never scrolls sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* ---- your bills / totals flip card ---- */
+
+.flip-scene {
+  perspective: 2000px;
+}
+
+.flip-card {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Forces its own compositing layer - without this, WebKit (iOS Safari
+     and Chrome-on-iOS, which is WebKit underneath regardless of name)
+     can (a) let the "hidden" backface flash briefly mid-transition
+     despite backface-visibility:hidden, and (b) fail to recognize touch
+     scroll gestures over in-flow content sitting inside this 3D context,
+     needing multiple attempts to register. */
+  will-change: transform;
+}
+
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  width: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-face.flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+.flip-face.flip-back .card {
+  /* Bounded + its own scroll, so a long bill list never spills past its
+     box - that spillover (not clipped) is what let the invisible back
+     face inflate the whole page's scrollable height when showing the
+     front. The front face is deliberately left as plain in-flow content
+     instead - it never had that spillover problem, and giving it a
+     nested scroll box was what broke touch scrolling there earlier. */
+  max-height: 640px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+.modal-hint {
+  margin-top: 0.75rem;
+}
+
+/* ---- privacy shield ---- */
+
+/* One overlay for the whole page below the greeting, instead of a
+   separate blur+veil per panel/topbar - the veil's own backdrop-filter
+   blurs whatever sits behind it, so nothing underneath needs its own
+   filter, and there's nothing to miss if a new panel is added later. */
+.privacy-shield {
+  position: relative;
+}
+
+.privacy-veil {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--veil-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 20px;
+  transition: opacity .35s ease;
+}
+
+.privacy-shield:not(.revealed) .privacy-veil {
+  display: flex;
+}
+
+.privacy-veil svg {
+  color: var(--accent);
+}
+
+.privacy-veil-label {
+  font-weight: 700;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(15, 15, 31, 0.12);
+}
+
+.veil-label-mobile {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .veil-label-desktop {
+    display: none;
+  }
+
+  .veil-label-mobile {
+    display: inline;
+  }
+}

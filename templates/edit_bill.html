@@ -1,0 +1,84 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit Bill - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  {{ macros.nav_header('edit', pending_count, title="Edit Bill") }}
+
+  <section class="card">
+    <form method="post" action="{{ url_for('edit_bill', bill_id=bill['id']) }}" class="row">
+      <input name="vendor" placeholder="Vendor" value="{{ bill['vendor'] }}" required>
+      <input name="amount" type="number" step="0.01" inputmode="decimal" placeholder="Amount"
+             value="{{ bill['amount'] if bill['amount'] is not none else '' }}">
+      <input name="total_amount" type="number" step="0.01" inputmode="decimal" placeholder="Total amount (optional)"
+             value="{{ bill['total_amount'] if bill['total_amount'] is not none else '' }}">
+      <input name="total_payments" type="number" min="1" step="1" inputmode="numeric" placeholder="# of payments (optional)"
+             value="{{ bill['total_payments'] if bill['total_payments'] is not none else '' }}">
+      <label class="hint"><input type="checkbox" name="until_cancelled" {{ 'checked' if bill['until_cancelled'] else '' }}> Until cancelled</label>
+      <input name="due_date" type="date" value="{{ bill['due_date'] or '' }}">
+      <select name="category" id="category-select">
+        <option value="">(no category)</option>
+        {% for c in categories %}
+        <option value="{{ c }}" {{ 'selected' if c == bill['category'] else '' }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="category-toggle" data-target="new-category-input">+ Category</button>
+      <input name="new_category" id="new-category-input" placeholder="New category name" hidden>
+      <input name="notes" placeholder="Notes" value="{{ bill['notes'] or '' }}">
+      <span class="hint">Repeats every</span>
+      <input name="recurrence_interval" type="number" min="1" inputmode="numeric" placeholder="1" class="narrow"
+             value="{{ bill['recurrence_interval'] or '' }}">
+      <select name="recurrence_unit">
+        <option value="" {{ 'selected' if not bill['recurrence_unit'] else '' }}>(no repeat)</option>
+        {% for unit in ['day', 'week', 'month', 'year'] %}
+        <option value="{{ unit }}" {{ 'selected' if bill['recurrence_unit'] == unit else '' }}>{{ unit }}(s)</option>
+        {% endfor %}
+      </select>
+      <div class="icon-picker">
+        <span class="hint">Icon (optional - guessed from category otherwise)</span>
+        <input type="hidden" name="icon" value="{{ bill['icon'] or '' }}">
+        <div class="icon-picker-grid">
+          {% for slug, label in icon_choices %}
+          <button type="button" class="icon-picker-option" data-icon="{{ slug }}" title="{{ label }}" aria-label="{{ label }}">
+            <span class="category-icon">{{ icon_svg(slug) }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit">Save</button>
+      <a class="btn-link" href="{{ url_for('index') }}">Cancel</a>
+    </form>
+  </section>
+
+  <script>
+    document.querySelectorAll('.category-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.target);
+        input.hidden = !input.hidden;
+        if (!input.hidden) input.focus();
+      });
+    });
+
+    document.querySelectorAll('.icon-picker').forEach(function (picker) {
+      var input = picker.querySelector('input[type="hidden"]');
+      var options = picker.querySelectorAll('.icon-picker-option');
+      options.forEach(function (opt) {
+        if (opt.dataset.icon === input.value) opt.classList.add('selected');
+        opt.addEventListener('click', function () {
+          options.forEach(function (o) { o.classList.remove('selected'); });
+          opt.classList.add('selected');
+          input.value = opt.dataset.icon;
+        });
+      });
+    });
+  </script>
+</body>
+</html>

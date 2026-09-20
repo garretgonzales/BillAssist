@@ -1,0 +1,842 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  <div class="splash-screen" id="splash-screen">
+    <div class="splash-logo">Bill Tracker</div>
+    <div class="splash-tag">Getting your bills ready...</div>
+  </div>
+  <script>
+    // Runs synchronously, immediately after the splash markup and before
+    // the rest of the page below it - so the decision to hide it happens
+    // before there's anything else to flash. Visible by default (see
+    // .splash-screen in style.css) rather than JS-activated, so it still
+    // shows correctly even if this script were ever blocked/delayed.
+    (function () {
+      var splash = document.getElementById('splash-screen');
+      var VISITED_KEY = 'billtracker-visited';
+      var LAST_ACTIVE_KEY = 'billtracker-last-active';
+      var IDLE_MS = 60 * 60 * 1000; // an hour away counts as "away long enough" to see it again
+      var shouldShow = true;
+      try {
+        var visited = localStorage.getItem(VISITED_KEY);
+        var lastActive = parseInt(localStorage.getItem(LAST_ACTIVE_KEY), 10);
+        shouldShow = !visited || !lastActive || (Date.now() - lastActive) > IDLE_MS;
+        localStorage.setItem(VISITED_KEY, '1');
+        localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+      } catch (e) {}
+      if (!shouldShow) {
+        splash.style.display = 'none';
+      } else {
+        setTimeout(function () {
+          splash.classList.add('hide');
+          setTimeout(function () { splash.style.display = 'none'; }, 400);
+        }, 1100);
+      }
+    })();
+  </script>
+
+  {{ macros.page_title('index', pending_count) }}
+
+  <div class="privacy-shield" id="privacy-shield">
+  <div class="privacy-veil" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+    <span class="privacy-veil-label">
+      <span class="veil-label-desktop">Click to reveal</span>
+      <span class="veil-label-mobile">Tap to unlock</span>
+    </span>
+  </div>
+
+  {{ macros.topbar_nav('index', pending_count) }}
+
+  <div class="tabs panel-switcher" id="panel-switcher">
+    <a class="tab" data-switch-panel="overview">Overview</a>
+    <a class="tab" data-switch-panel="bills">Your Bills</a>
+    <a class="tab" data-switch-panel="estimates">Estimated Payments</a>
+    <a class="tab mobile-only-tab" data-switch-panel="totals">Totals</a>
+  </div>
+
+  <div class="focus-stage" id="focus-stage" data-focus="overview">
+  <div class="focus-panel" data-panel="overview">
+  <div class="flip-scene">
+  <div class="flip-card" id="overview-flip-card">
+  <div class="flip-face flip-front">
+  <section class="card dashboard">
+    <div class="bills-header">
+      <div>
+        <div class="eyebrow">Overview</div>
+        <h2 class="section-title">Your Bills</h2>
+      </div>
+      <button type="button" class="icon-btn" id="flip-to-totals" title="View bill totals" aria-label="View bill totals">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 2l4 4-4 4"></path>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <path d="M7 22l-4-4 4-4"></path>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <div class="stat-label">Total Due</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ summary['unpaid_total'] }}">${{ '%.2f' % summary['unpaid_total'] }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Bills Remaining</div>
+        <div class="stat-value"><span class="count-up" data-format="integer" data-target="{{ summary['unpaid_count'] }}">{{ summary['unpaid_count'] }}</span></div>
+      </div>
+      <a class="stat-tile stat-tile-link" href="{{ url_for('index', tab='next_month', q=search) }}">
+        <div class="stat-label">Next Month</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ summary['next_month_total'] }}">${{ '%.2f' % summary['next_month_total'] }}</span></div>
+      </a>
+    </div>
+
+    <div class="pie-row">
+      <svg viewBox="0 0 140 140" class="donut" role="img" aria-label="This month's bills by category">
+        <circle cx="70" cy="70" r="{{ 52 }}" class="donut-track"></circle>
+        <g class="donut-slices" transform="rotate(-90 70 70)">
+          {% for slice in pie_slices %}
+          <circle cx="70" cy="70" r="52"
+                  stroke="{{ slice.color }}"
+                  stroke-dasharray="0 {{ '%.2f' % pie_circumference }}"
+                  stroke-dashoffset="{{ slice.offset }}"
+                  data-dash="{{ slice.dash }}"
+                  class="pie-slice"></circle>
+          {% endfor %}
+        </g>
+        <text x="70" y="66" class="donut-total count-up" data-format="currency-round" data-target="{{ summary['this_month_all_total'] }}">${{ '%.0f' % summary['this_month_all_total'] }}</text>
+        <text x="70" y="82" class="donut-caption">total this month</text>
+      </svg>
+
+      <ul class="legend">
+        {% for slice in pie_slices %}
+        <li>
+          <span class="swatch" style="background: {{ slice.color }}"></span>
+          <span class="legend-name">{{ slice.category }}</span>
+          <span class="legend-amount count-up" data-format="currency" data-target="{{ slice.total }}">${{ '%.2f' % slice.total }}</span>
+          <span class="legend-pct count-up" data-format="percent" data-target="{{ slice.pct }}">{{ '%.1f' % slice.pct }}%</span>
+        </li>
+        {% else %}
+        <li class="hint">No bills tracked this month yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+  </div>
+
+  <div class="flip-face flip-back">
+  <section class="card dashboard">
+    <div class="bills-header">
+      <div>
+        <div class="eyebrow">Totals</div>
+        <h2 class="section-title">All Bills</h2>
+      </div>
+      <button type="button" class="icon-btn" id="flip-to-overview" title="Back to overview" aria-label="Back to overview">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 2l4 4-4 4"></path>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <path d="M7 22l-4-4 4-4"></path>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </button>
+    </div>
+
+    {{ macros.totals_content(recurring_payment_total, tracked_total_amount, totals_bills) }}
+  </section>
+  </div>
+  </div>
+  </div>
+  </div>
+
+  <div class="focus-panel" data-panel="bills">
+  <section class="card">
+    <div class="bills-header">
+      <div>
+        <div class="eyebrow">Bills</div>
+        <h2 class="section-title">Your Bills</h2>
+      </div>
+      <button type="button" class="primary" id="open-add-modal">+ Add Bill</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <div class="stat-label">Showing</div>
+        <div class="stat-value"><span class="count-up" data-format="integer" data-target="{{ bills|length }}">{{ bills|length }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Total {{ 'Due' if status_filter == 'unpaid' else 'Paid' }}</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ bills_shown_total }}">${{ '%.2f' % bills_shown_total }}</span></div>
+      </div>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <a class="tab {{ 'active' if tab == 'this_month' else '' }}" href="{{ url_for('index', tab='this_month', status=status_filter, q=search) }}">This Month</a>
+        <a class="tab {{ 'active' if tab == 'next_month' else '' }}" href="{{ url_for('index', tab='next_month', status=status_filter, q=search) }}">Next Month</a>
+      </div>
+      <div class="tabs">
+        <a class="tab {{ 'active' if status_filter == 'unpaid' else '' }}" href="{{ url_for('index', tab=tab, status='unpaid', q=search) }}">Unpaid</a>
+        <a class="tab {{ 'active' if status_filter == 'paid' else '' }}" href="{{ url_for('index', tab=tab, status='paid', q=search) }}">Paid</a>
+      </div>
+    </div>
+
+    <form method="get" action="{{ url_for('index') }}" class="row search-row">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      <input name="q" value="{{ search }}" placeholder="Search vendor or category...">
+      <button type="submit">Search</button>
+      {% if search %}<a href="{{ url_for('index', tab=tab, status=status_filter) }}">Clear</a>{% endif %}
+    </form>
+
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Vendor</th><th>Amount</th><th>Due</th><th>Category</th><th>Repeats</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bill in bills %}
+        <tr class="{{ bill['status'] }}">
+          <td>
+            <span class="category-icon">{{ bill_icon(bill) }}</span>
+            {% if bill['notes'] %}
+            <details class="notes-details">
+              <summary>{{ bill['vendor'] }}</summary>
+              <div class="notes-content">{{ bill['notes'] }}</div>
+            </details>
+            {% else %}
+            {{ bill['vendor'] }}
+            {% endif %}
+          </td>
+          <td>{{ '$%.2f' % bill['amount'] if bill['amount'] is not none else '-' }}</td>
+          <td>{{ bill['due_date']|mmddyyyy or '-' }}</td>
+          <td>{{ bill['category'] or '-' }}</td>
+          <td>
+            {% if bill['recurrence_unit'] %}
+            {{ bill['recurrence_interval'] }} {{ bill['recurrence_unit'] }}{{ 's' if bill['recurrence_interval'] != 1 else '' }}
+            {% else %}
+            <svg class="repeats-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18"></path>
+              <path d="M6 6l12 12"></path>
+            </svg>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" class="pay-form"
+                  action="{{ url_for('unpay_bill', bill_id=bill['id']) if bill['status'] == 'paid' else url_for('pay_bill', bill_id=bill['id']) }}">
+              <button type="submit" class="icon-btn pay-toggle {{ 'paid' if bill['status'] == 'paid' else '' }}"
+                      title="Paid" aria-label="Paid">
+                <svg class="pay-icon" viewBox="0 0 24 24" width="20" height="20">
+                  <circle class="pay-ring" cx="12" cy="12" r="9"></circle>
+                  <path class="pay-check" d="M7 12.5l3.2 3.2L17 8.5"></path>
+                </svg>
+              </button>
+            </form>
+          </td>
+          <td class="actions">
+            <div class="actions-viewport">
+              <div class="actions-track">
+                <div class="action-row">
+                  <a class="icon-btn" href="{{ url_for('edit_bill_form', bill_id=bill['id']) }}" title="Edit" aria-label="Edit {{ bill['vendor'] }}">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                  </a>
+
+                  <button type="button" class="icon-btn delete-trigger" title="Delete" aria-label="Delete {{ bill['vendor'] }}">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                      <path d="M10 11v6"></path>
+                      <path d="M14 11v6"></path>
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="confirm-row">
+                  <span class="confirm-label">Delete?</span>
+                  <form method="post" action="{{ url_for('delete_bill', bill_id=bill['id']) }}">
+                    <button type="submit" class="confirm-yes">Yes</button>
+                  </form>
+                  <button type="button" class="confirm-no">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">
+          {% if search %}No bills match your search.
+          {% elif status_filter == 'paid' %}{{ 'No paid bills for next month' if tab == 'next_month' else 'No paid bills this month yet.' }}
+          {% else %}No unpaid bills {{ 'due next month' if tab == 'next_month' else 'this month' }}.
+          {% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  </div>
+
+  <div class="focus-panel" data-panel="estimates">
+  <section class="card">
+    <div class="bills-header">
+      <div>
+        <div class="eyebrow">Estimates</div>
+        <h2 class="section-title">Estimated Payments</h2>
+      </div>
+      <button type="button" class="primary" id="open-add-income-modal">+ Add Income</button>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <a class="tab {{ 'active' if tab == 'this_month' else '' }}" href="{{ url_for('index', tab='this_month', status=status_filter, q=search) }}">This Month</a>
+        <a class="tab {{ 'active' if tab == 'next_month' else '' }}" href="{{ url_for('index', tab='next_month', status=status_filter, q=search) }}">Next Month</a>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <div class="stat-label">Income</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ income_total }}">${{ '%.2f' % income_total }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Total Bills</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ bills_total_for_tab }}">${{ '%.2f' % bills_total_for_tab }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Paid</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ paid_for_tab }}">${{ '%.2f' % paid_for_tab }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Still Unpaid</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ due_total_for_tab }}">${{ '%.2f' % due_total_for_tab }}</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Net</div>
+        <div class="stat-value"><span class="count-up" data-format="currency" data-target="{{ net_for_tab }}">${{ '%.2f' % net_for_tab }}</span></div>
+      </div>
+    </div>
+
+    <p class="hint">Total Bills is every bill in this list, paid and unpaid, for the selected month. Net weighs Income against what's already Paid - so as bills here get marked paid, Paid rises and Net falls to match, all live; Still Unpaid doesn't affect Net until you actually pay it. Estimated Per Payment splits a recurring bill's total amount evenly across its number of payments - set both on a bill to see an estimate; either one missing, or the bill marked until cancelled, shows "-".</p>
+
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th><th>Amount</th><th id="income-date-header" class="income-header-veiled">Date</th><th id="income-repeats-header" class="income-header-veiled">Repeats</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in income_groups %}
+        {% set group_id = 'income-group-' ~ loop.index %}
+        {% set multi = group.occurrences|length > 1 %}
+        {% if multi %}
+        <tr class="income-group-summary">
+          <td>
+            <img class="income-icon" src="{{ url_for('static', filename='icons/money-box-100.gif') }}" alt="" aria-hidden="true">
+            <button type="button" class="income-group-toggle" data-target="{{ group_id }}" aria-expanded="false">
+              <svg class="income-group-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 6l6 6-6 6"></path>
+              </svg>
+              {{ group.label }} <span class="hint">({{ group.occurrences|length }})</span>
+            </button>
+          </td>
+          <td>{{ '$%.2f' % group.total }}</td>
+          <td colspan="3"></td>
+        </tr>
+        {% endif %}
+        {% for income in group.occurrences %}
+        <tr{% if multi %} class="income-group-detail" data-group="{{ group_id }}" hidden{% endif %}>
+          <td>
+            {% if not multi %}
+            <img class="income-icon" src="{{ url_for('static', filename='icons/money-box-100.gif') }}" alt="" aria-hidden="true">
+            {% endif %}
+            {{ income['label'] }}
+          </td>
+          <td>{{ '$%.2f' % income['amount'] }}</td>
+          <td class="income-veiled">
+            <span class="income-veil-label">&bull;&bull;&bull;</span>
+            <span class="income-veil-content" hidden>{{ income['pay_date']|mmddyyyy or '-' }}</span>
+          </td>
+          <td class="income-veiled">
+            <span class="income-veil-label">&bull;&bull;&bull;</span>
+            <span class="income-veil-content" hidden>
+              {% if income['recurrence_unit'] %}
+              {{ income['recurrence_interval'] }} {{ income['recurrence_unit'] }}{{ 's' if income['recurrence_interval'] != 1 else '' }}
+              {% else %}
+              <svg class="repeats-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+              </svg>
+              {% endif %}
+            </span>
+          </td>
+          <td>
+            <div class="action-row">
+              <a class="icon-btn" href="{{ url_for('edit_income_form', income_id=income['id'], tab=tab) }}" title="Edit" aria-label="Edit {{ income['label'] }}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </a>
+              <form method="post" action="{{ url_for('delete_income', income_id=income['id']) }}" class="inline-form">
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <button type="submit" class="icon-btn" title="Delete" aria-label="Delete {{ income['label'] }}">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td colspan="5">No income added for {{ 'this month' if tab == 'this_month' else 'next month' }} yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Vendor</th><th>Total Amount</th><th># Payments</th><th>Repeats</th><th>Est. per payment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in payment_estimates %}
+        {% set bill = item.bill %}
+        <tr>
+          <td>
+            <span class="category-icon">{{ bill_icon(bill) }}</span>
+            {% if bill['notes'] %}
+            <details class="notes-details">
+              <summary>{{ bill['vendor'] }}</summary>
+              <div class="notes-content">{{ bill['notes'] }}</div>
+            </details>
+            {% else %}
+            {{ bill['vendor'] }}
+            {% endif %}
+          </td>
+          <td>{{ 'Ongoing' if bill['until_cancelled'] else ('$%.2f' % bill['total_amount'] if bill['total_amount'] is not none else '-') }}</td>
+          <td>
+            {% if bill['total_payments'] is not none %}
+            {{ bill['total_payments'] }}
+            {% elif item.payments_needed_estimate is not none %}
+            <span title="Estimated: Total Amount &divide; the amount due each payment">~{{ item.payments_needed_estimate }}</span>
+            {% elif bill['until_cancelled'] %}
+            Ongoing
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>{{ bill['recurrence_interval'] }} {{ bill['recurrence_unit'] }}{{ 's' if bill['recurrence_interval'] != 1 else '' }}</td>
+          <td>{{ '$%.2f' % item.estimate if item.estimate is not none else '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No recurring bills yet - add one with a repeat interval to see it here.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  </div>
+
+  <div class="focus-panel mobile-only-panel" data-panel="totals">
+  <section class="card dashboard">
+    <div class="bills-header">
+      <div>
+        <div class="eyebrow">Totals</div>
+        <h2 class="section-title">All Bills</h2>
+      </div>
+    </div>
+    {{ macros.totals_content(recurring_payment_total, tracked_total_amount, totals_bills) }}
+  </section>
+  </div>
+  </div>
+  </div>
+
+  <div class="modal-overlay" id="add-income-modal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 class="section-title">Add income</h2>
+        <button type="button" class="icon-btn" id="close-add-income-modal" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <form method="post" action="{{ url_for('add_income') }}" class="row">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input name="label" placeholder="Source (e.g. Paycheck)" id="add-income-label-input">
+        <input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Amount" required>
+        <input name="pay_date" type="date">
+        <span class="hint">Repeats every</span>
+        <input name="recurrence_interval" type="number" min="1" inputmode="numeric" placeholder="2" class="narrow">
+        <select name="recurrence_unit">
+          <option value="">(no repeat)</option>
+          <option value="day">day(s)</option>
+          <option value="week" selected>week(s)</option>
+          <option value="month">month(s)</option>
+          <option value="year">year(s)</option>
+        </select>
+        <button type="submit" class="primary">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="add-modal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 class="section-title">Add a bill</h2>
+        <button type="button" class="icon-btn" id="close-add-modal" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <form method="post" action="{{ url_for('add_bill') }}" class="row">
+        <input name="vendor" placeholder="Vendor" required id="add-vendor-input">
+        <input name="amount" type="number" step="0.01" inputmode="decimal" placeholder="Amount">
+        <input name="total_amount" type="number" step="0.01" inputmode="decimal" placeholder="Total amount (optional)">
+        <input name="total_payments" type="number" min="1" step="1" inputmode="numeric" placeholder="# of payments (optional)">
+        <label class="hint"><input type="checkbox" name="until_cancelled"> Until cancelled</label>
+        <input name="due_date" type="date">
+        <select name="category" id="category-select">
+          <option value="">(no category)</option>
+          {% for c in categories %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="category-toggle" data-target="new-category-input">+ Category</button>
+        <input name="new_category" id="new-category-input" placeholder="New category name" hidden>
+        <input name="notes" placeholder="Notes">
+        <span class="hint">Repeats every</span>
+        <input name="recurrence_interval" type="number" min="1" inputmode="numeric" placeholder="1" class="narrow">
+        <select name="recurrence_unit">
+          <option value="">(no repeat)</option>
+          <option value="day">day(s)</option>
+          <option value="week">week(s)</option>
+          <option value="month" selected>month(s)</option>
+          <option value="year">year(s)</option>
+        </select>
+        <div class="icon-picker">
+          <span class="hint">Icon (optional - guessed from category otherwise)</span>
+          <input type="hidden" name="icon" value="">
+          <div class="icon-picker-grid">
+            {% for slug, label in icon_choices %}
+            <button type="button" class="icon-picker-option" data-icon="{{ slug }}" title="{{ label }}" aria-label="{{ label }}">
+              <span class="category-icon">{{ icon_svg(slug) }}</span>
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        <button type="submit" class="primary">Add</button>
+      </form>
+      <p class="hint modal-hint">Total amount is optional - e.g. a loan's full remaining balance. It's tracked separately and won't affect Total Due or the chart above; view it on the flip side of Your Bills. Add a # of payments alongside it to see an estimated per-payment amount in Estimated Payments. For an open-ended subscription with no fixed end, check "Until cancelled" instead - its own amount is used as the per-payment estimate.</p>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.category-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.target);
+        input.hidden = !input.hidden;
+        if (!input.hidden) input.focus();
+      });
+    });
+
+    // Icon picker: click a circle to pick it (sets the form's hidden
+    // "icon" input), works for however many .icon-picker instances are
+    // on the page (add-bill modal here, edit-bill has its own).
+    document.querySelectorAll('.icon-picker').forEach(function (picker) {
+      var input = picker.querySelector('input[type="hidden"]');
+      var options = picker.querySelectorAll('.icon-picker-option');
+      options.forEach(function (opt) {
+        if (opt.dataset.icon === input.value) opt.classList.add('selected');
+        opt.addEventListener('click', function () {
+          options.forEach(function (o) { o.classList.remove('selected'); });
+          opt.classList.add('selected');
+          input.value = opt.dataset.icon;
+        });
+      });
+    });
+
+    // Income rows grouped by duplicate source name: click the summary row's
+    // toggle to reveal each individual matching income beneath it.
+    document.querySelectorAll('.income-group-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        document.querySelectorAll('tr[data-group="' + btn.dataset.target + '"]').forEach(function (row) {
+          row.hidden = expanded;
+        });
+      });
+    });
+
+    // An income's Date and Repeats stay masked (behind ***) until clicked -
+    // clicking either cell reveals both for that row, since they're hidden
+    // for the same reason and are only useful to see together. The two
+    // column headers stay hidden too until the first row is expanded -
+    // no point labeling columns nothing has revealed yet.
+    document.querySelectorAll('.income-veiled').forEach(function (cell) {
+      cell.addEventListener('click', function () {
+        document.getElementById('income-date-header').classList.remove('income-header-veiled');
+        document.getElementById('income-repeats-header').classList.remove('income-header-veiled');
+        cell.closest('tr').querySelectorAll('.income-veiled').forEach(function (c) {
+          c.querySelector('.income-veil-label').hidden = true;
+          c.querySelector('.income-veil-content').hidden = false;
+        });
+      });
+    });
+
+    // Count every dashboard number up from 0 to its real value. All of them
+    // share one rAF loop and one start time/duration, so every number - no
+    // matter its size - reaches its target on the exact same frame instead
+    // of drifting apart.
+    (function () {
+      var els = Array.prototype.slice.call(document.querySelectorAll('.count-up'));
+      if (!els.length) return;
+      var DURATION = 1000;
+      var formatters = {
+        currency: function (v) { return '$' + v.toFixed(2); },
+        'currency-round': function (v) { return '$' + Math.round(v); },
+        integer: function (v) { return String(Math.round(v)); },
+        percent: function (v) { return v.toFixed(1) + '%'; },
+      };
+      var items = els.map(function (el) {
+        return {
+          el: el,
+          target: parseFloat(el.dataset.target) || 0,
+          format: formatters[el.dataset.format] || formatters.integer,
+        };
+      });
+      var start = null;
+      function tick(now) {
+        if (start === null) start = now;
+        var progress = Math.min((now - start) / DURATION, 1);
+        var eased = 1 - Math.pow(1 - progress, 3);
+        items.forEach(function (item) {
+          item.el.textContent = item.format(item.target * eased);
+        });
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+
+    // Draw the donut chart in on load: dasharray starts at "0 C" server-side,
+    // then gets set to its real target so the transition animates the sweep.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        document.querySelectorAll('.pie-slice').forEach(function (el) {
+          el.setAttribute('stroke-dasharray', el.dataset.dash);
+        });
+      });
+    });
+
+    // Add-bill / Add-income modals - same open/close/backdrop-click
+    // behavior for both, just different element ids.
+    function bindModal(overlayId, openBtnId, closeBtnId, focusId) {
+      var overlay = document.getElementById(overlayId);
+      function open() {
+        overlay.classList.add('open');
+        document.getElementById(focusId).focus();
+      }
+      function close() {
+        overlay.classList.remove('open');
+      }
+      document.getElementById(openBtnId).addEventListener('click', open);
+      document.getElementById(closeBtnId).addEventListener('click', close);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) close();
+      });
+      return close;
+    }
+    var closeAddModal = bindModal('add-modal', 'open-add-modal', 'close-add-modal', 'add-vendor-input');
+    var closeAddIncomeModal = bindModal('add-income-modal', 'open-add-income-modal', 'close-add-income-modal', 'add-income-label-input');
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      closeAddModal();
+      closeAddIncomeModal();
+    });
+
+    // Paid/unpaid icon toggle: play the draw-in animation before the form
+    // actually submits, so it's visible instead of getting cut off by the
+    // page navigating away instantly.
+    document.querySelectorAll('.pay-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        var btn = form.querySelector('.pay-toggle');
+        if (btn.classList.contains('animating')) return;
+        e.preventDefault();
+        btn.classList.add('animating');
+        btn.classList.toggle('paid');
+        setTimeout(function () { form.submit(); }, 380);
+      });
+    });
+
+    // Delete: slide in a confirm/cancel panel over the icon row instead of
+    // deleting immediately.
+    document.querySelectorAll('.delete-trigger').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.closest('.actions-track').classList.add('confirming');
+      });
+    });
+    document.querySelectorAll('.confirm-no').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.closest('.actions-track').classList.remove('confirming');
+      });
+    });
+
+    // Privacy shield: a single overlay (see .privacy-shield/.privacy-veil
+    // in style.css - backdrop-filter blur on the veil itself, so it
+    // covers everything underneath it without needing to enumerate and
+    // blur each piece of content individually) hides the whole page
+    // below the greeting until tapped. The 2-minute countdown to re-blur
+    // only runs while nothing in the window is being clicked - any click
+    // anywhere pushes it back out to a fresh 2 minutes, so it only
+    // re-blurs after a full 2 minutes with zero clicks at all.
+    // sessionStorage (not localStorage) means normal use - tabs,
+    // searching, paying a bill, all of which reload the page - doesn't
+    // force a re-blur, but a genuinely new browser session/tab starts
+    // blurred, and real inactivity re-blurs even across a reload.
+    (function () {
+      var REVEAL_MS = 120000;
+      var STORAGE_KEY = 'billtracker-reveal-until';
+      var timer = null;
+      var shield = document.getElementById('privacy-shield');
+      if (!shield) return;
+
+      function blurAll() {
+        shield.classList.remove('revealed');
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      }
+
+      function scheduleReblur(ms) {
+        clearTimeout(timer);
+        timer = setTimeout(blurAll, ms);
+      }
+
+      function revealAll() {
+        shield.classList.add('revealed');
+        var until = Date.now() + REVEAL_MS;
+        try { sessionStorage.setItem(STORAGE_KEY, String(until)); } catch (e) {}
+        scheduleReblur(REVEAL_MS);
+      }
+
+      var stored = null;
+      try { stored = sessionStorage.getItem(STORAGE_KEY); } catch (e) {}
+      if (stored) {
+        var remaining = parseInt(stored, 10) - Date.now();
+        if (remaining > 0) {
+          shield.classList.add('revealed');
+          scheduleReblur(remaining);
+        } else {
+          try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        }
+      }
+
+      shield.addEventListener('click', function () {
+        revealAll();
+      });
+
+      // Once revealed, any click anywhere in the window resets the
+      // countdown - it never reveals a still-blurred shield by itself,
+      // since revealAll() (above) is the only thing that adds .revealed.
+      document.addEventListener('click', function () {
+        if (shield.classList.contains('revealed')) {
+          revealAll();
+        }
+      });
+    })();
+
+    // Section switcher: one panel shown at a time, all the same full size -
+    // a tab row picks which one, click/tap only (no swipe, no horizontal
+    // scrolling anywhere on this page). Panel-count-agnostic - CSS keys
+    // off the .is-focused class this applies to every panel, so adding
+    // or removing a panel needs no changes here. Remembers the choice
+    // per-browser across the page reloads that actions elsewhere on the
+    // page (search, tabs, pay, delete...) cause. Since only the focused
+    // panel is ever in the layout (the rest are display:none), the page
+    // can never be scrolled past the end of its content - there's simply
+    // nothing else there to scroll into.
+    (function () {
+      var stage = document.getElementById('focus-stage');
+      var switcher = document.getElementById('panel-switcher');
+      var FOCUS_KEY = 'billtracker-focus';
+      var panels = Array.prototype.slice.call(stage.querySelectorAll('.focus-panel'));
+      var tabs = Array.prototype.slice.call(switcher.querySelectorAll('[data-switch-panel]'));
+      var panelOrder = panels.map(function (p) { return p.dataset.panel; });
+
+      function applyFocus(which) {
+        // Slide direction matches the tab's position relative to the
+        // one that was active before - moving to a tab further right
+        // slides the new tile in from the right, and vice versa.
+        var fromIndex = panelOrder.indexOf(stage.dataset.focus);
+        var toIndex = panelOrder.indexOf(which);
+        var fromRight = toIndex >= fromIndex;
+        stage.dataset.focus = which;
+        panels.forEach(function (panel) {
+          var isTarget = panel.dataset.panel === which;
+          panel.classList.remove('slide-from-right', 'slide-from-left');
+          if (isTarget) panel.classList.add(fromRight ? 'slide-from-right' : 'slide-from-left');
+          panel.classList.toggle('is-focused', isTarget);
+        });
+        tabs.forEach(function (tab) {
+          tab.classList.toggle('active', tab.dataset.switchPanel === which);
+        });
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var which = tab.dataset.switchPanel;
+          if (stage.dataset.focus === which) return;
+          applyFocus(which);
+          try { localStorage.setItem(FOCUS_KEY, which); } catch (e) {}
+        });
+      });
+
+      var saved = null;
+      try { saved = localStorage.getItem(FOCUS_KEY); } catch (e) {}
+      var initial = (saved && panelOrder.indexOf(saved) !== -1) ? saved : stage.dataset.focus;
+      applyFocus(initial);
+    })();
+
+    // Flip "Your Bills" (Overview) over to reveal the totals view (and
+    // back). Purely visual - both faces are already rendered server-side,
+    // this just rotates which one faces the viewer.
+    (function () {
+      var flipCard = document.getElementById('overview-flip-card');
+      var toTotals = document.getElementById('flip-to-totals');
+      var toOverview = document.getElementById('flip-to-overview');
+      if (!flipCard || !toTotals || !toOverview) return;
+      toTotals.addEventListener('click', function () { flipCard.classList.add('flipped'); });
+      toOverview.addEventListener('click', function () { flipCard.classList.remove('flipped'); });
+    })();
+  </script>
+</body>
+</html>

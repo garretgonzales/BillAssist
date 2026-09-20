@@ -1,0 +1,37 @@
+{% import '_macros.html' as macros with context %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit Income - Bill Tracker</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/sack-dollar.svg') }}">
+  <link rel="stylesheet" href="{{ versioned_static('style.css') }}">
+  {{ theme_style() }}
+</head>
+<body>
+  {{ macros.nav_header('edit', pending_count, title="Edit Income") }}
+
+  <section class="card">
+    <form method="post" action="{{ url_for('edit_income', income_id=income['id']) }}" class="row">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input name="label" placeholder="Source (e.g. Paycheck)" value="{{ income['label'] }}" required>
+      <input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Amount" required
+             value="{{ income['amount'] }}">
+      <input name="pay_date" type="date" value="{{ income['pay_date'] or '' }}">
+      <span class="hint">Repeats every</span>
+      <input name="recurrence_interval" type="number" min="1" inputmode="numeric" placeholder="1" class="narrow"
+             value="{{ income['recurrence_interval'] or '' }}">
+      <select name="recurrence_unit">
+        <option value="" {{ 'selected' if not income['recurrence_unit'] else '' }}>(no repeat)</option>
+        {% for unit in ['day', 'week', 'month', 'year'] %}
+        <option value="{{ unit }}" {{ 'selected' if income['recurrence_unit'] == unit else '' }}>{{ unit }}(s)</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Save</button>
+      <a class="btn-link" href="{{ url_for('index', tab=tab) }}">Cancel</a>
+    </form>
+  </section>
+</body>
+</html>

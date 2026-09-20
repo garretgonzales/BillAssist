@@ -1,0 +1,7 @@
+venv/
+bills.db
+credentials.json
+token.json
+flask_secret_key.txt
+__pycache__/
+deploy/
