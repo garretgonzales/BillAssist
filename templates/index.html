@@ -104,6 +104,7 @@
       </a>
     </div>
 
+    <div class="pie-grid">
     <div class="pie-row">
       <svg viewBox="0 0 140 140" class="donut" role="img" aria-label="This month's bills by category">
         <circle cx="70" cy="70" r="{{ 52 }}" class="donut-track"></circle>
@@ -133,6 +134,38 @@
         <li class="hint">No bills tracked this month yet.</li>
         {% endfor %}
       </ul>
+    </div>
+
+    <div class="pie-row">
+      <svg viewBox="0 0 140 140" class="donut" role="img" aria-label="This month's paid bills by category">
+        <circle cx="70" cy="70" r="{{ 52 }}" class="donut-track"></circle>
+        <g class="donut-slices" transform="rotate(-90 70 70)">
+          {% for slice in pie_slices_paid %}
+          <circle cx="70" cy="70" r="52"
+                  stroke="{{ slice.color }}"
+                  stroke-dasharray="0 {{ '%.2f' % pie_circumference }}"
+                  stroke-dashoffset="{{ slice.offset }}"
+                  data-dash="{{ slice.dash }}"
+                  class="pie-slice"></circle>
+          {% endfor %}
+        </g>
+        <text x="70" y="66" class="donut-total count-up" data-format="currency-round" data-target="{{ summary['paid_total'] }}">${{ '%.0f' % summary['paid_total'] }}</text>
+        <text x="70" y="82" class="donut-caption">paid this month</text>
+      </svg>
+
+      <ul class="legend">
+        {% for slice in pie_slices_paid %}
+        <li>
+          <span class="swatch" style="background: {{ slice.color }}"></span>
+          <span class="legend-name">{{ slice.category }}</span>
+          <span class="legend-amount count-up" data-format="currency" data-target="{{ slice.total }}">${{ '%.2f' % slice.total }}</span>
+          <span class="legend-pct count-up" data-format="percent" data-target="{{ slice.pct }}">{{ '%.1f' % slice.pct }}%</span>
+        </li>
+        {% else %}
+        <li class="hint">No bills paid this month yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
     </div>
   </section>
   </div>
@@ -210,8 +243,10 @@
       </thead>
       <tbody>
         {% for bill in bills %}
-        <tr class="{{ bill['status'] }}">
+        {% set is_overdue = bill['status'] == 'unpaid' and bill['due_date'] and bill['due_date'] < today %}
+        <tr class="{{ bill['status'] }} {{ 'overdue' if is_overdue else '' }}">
           <td>
+            {% if is_overdue %}<span class="overdue-icon" title="Past due">{{ icon_svg('exclamation-circle') }}</span>{% endif %}
             <span class="category-icon">{{ bill_icon(bill) }}</span>
             {% if bill['notes'] %}
             <details class="notes-details">
@@ -820,9 +855,21 @@
         });
       });
 
+      // A link elsewhere (e.g. the overdue-bills alert) can force which
+      // panel opens via ?panel=bills - takes priority over the remembered
+      // choice, and persists to localStorage the same as a tab click
+      // would, so a later plain reload still lands there too.
+      var requested = null;
+      try { requested = new URLSearchParams(window.location.search).get('panel'); } catch (e) {}
       var saved = null;
       try { saved = localStorage.getItem(FOCUS_KEY); } catch (e) {}
-      var initial = (saved && panelOrder.indexOf(saved) !== -1) ? saved : stage.dataset.focus;
+      var initial = stage.dataset.focus;
+      if (requested && panelOrder.indexOf(requested) !== -1) {
+        initial = requested;
+        try { localStorage.setItem(FOCUS_KEY, initial); } catch (e) {}
+      } else if (saved && panelOrder.indexOf(saved) !== -1) {
+        initial = saved;
+      }
       applyFocus(initial);
     })();
 

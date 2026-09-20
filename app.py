@@ -275,6 +275,19 @@ def inject_theme_style():
     return dict(theme_style=theme_style, theme_color_presets=THEME_COLOR_PRESETS)
 
 
+@app.context_processor
+def inject_overdue_alert():
+    """A Jinja global (not a per-route value) so the "!" indicator can be
+    dropped into the shared topbar macro and show up on every page that
+    has one, without every route needing to compute and pass it through
+    render_template."""
+    def overdue_count():
+        if not current_user.is_authenticated:
+            return 0
+        return db.count_overdue_bills(int(current_user.id), date.today().isoformat())
+    return dict(overdue_count=overdue_count)
+
+
 class User(UserMixin):
     def __init__(self, row):
         self.id = str(row["id"])
@@ -683,8 +696,9 @@ def index():
     pending_count = len(db.list_pending_bills(user_id))
     categories = db.list_categories(user_id)
 
-    summary, by_category = db.get_summary(user_id, next_month_start, month_after_next_start)
+    summary, by_category, by_category_paid = db.get_summary(user_id, next_month_start, month_after_next_start)
     pie_slices = _build_pie_slices(by_category, summary["this_month_all_total"])
+    pie_slices_paid = _build_pie_slices(by_category_paid, summary["paid_total"])
 
     # Flip-side of the "Your bills" card - every distinct bill regardless of
     # month/status/search, so it never touches the totals or graph above.
@@ -764,6 +778,7 @@ def index():
         search=search,
         summary=summary,
         pie_slices=pie_slices,
+        pie_slices_paid=pie_slices_paid,
         pie_circumference=PIE_CIRCUMFERENCE,
         tab=tab,
         status_filter=status_filter,
@@ -778,6 +793,7 @@ def index():
         bills_total_for_tab=bills_total_for_tab,
         paid_for_tab=paid_for_tab,
         net_for_tab=net_for_tab,
+        today=date.today().isoformat(),
     )
 
 

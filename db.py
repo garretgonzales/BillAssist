@@ -599,6 +599,20 @@ def list_categories(user_id):
         return [row["name"] for row in rows]
 
 
+def count_overdue_bills(user_id, today):
+    """Unpaid bills with a due_date strictly before today - a bill with no
+    due_date at all hasn't "passed" anything, so it doesn't count here
+    (unlike the this-month dashboard totals, which treat undated bills as
+    part of the current month for a different purpose)."""
+    with conn_scope() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM bills WHERE user_id = ? AND status = 'unpaid' "
+            "AND due_date IS NOT NULL AND due_date < ?",
+            (user_id, today),
+        ).fetchone()
+        return row["n"]
+
+
 def get_summary(user_id, next_month_start, month_after_next_start):
     """Dashboard totals, scoped to the current month: what's owed this month
     (including anything overdue or undated) and how many bills that spans,
@@ -611,6 +625,10 @@ def get_summary(user_id, next_month_start, month_after_next_start):
             "    THEN amount ELSE 0 END), 0) AS unpaid_total, "
             "  SUM(CASE WHEN status = 'unpaid' AND (due_date IS NULL OR due_date < :next_start) "
             "    THEN 1 ELSE 0 END) AS unpaid_count, "
+            "  COALESCE(SUM(CASE WHEN status = 'paid' AND (due_date IS NULL OR due_date < :next_start) "
+            "    THEN amount ELSE 0 END), 0) AS paid_total, "
+            "  SUM(CASE WHEN status = 'paid' AND (due_date IS NULL OR due_date < :next_start) "
+            "    THEN 1 ELSE 0 END) AS paid_count, "
             "  SUM(CASE WHEN (due_date IS NULL OR due_date < :next_start) THEN 1 ELSE 0 END) AS total_count, "
             "  COALESCE(SUM(CASE WHEN status = 'unpaid' AND due_date >= :next_start AND due_date < :after_next "
             "    THEN amount ELSE 0 END), 0) AS next_month_total, "
@@ -633,11 +651,21 @@ def get_summary(user_id, next_month_start, month_after_next_start):
             params,
         ).fetchall()
 
+        by_category_paid = conn.execute(
+            "SELECT COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized') AS cat, "
+            "COALESCE(SUM(amount), 0) AS total "
+            "FROM bills WHERE user_id = :user_id "
+            "AND status = 'paid' AND (due_date IS NULL OR due_date < :next_start) "
+            "GROUP BY cat ORDER BY total DESC",
+            params,
+        ).fetchall()
+
     summary = dict(row)
     summary["unpaid_count"] = summary["unpaid_count"] or 0
+    summary["paid_count"] = summary["paid_count"] or 0
     summary["total_count"] = summary["total_count"] or 0
     summary["next_month_count"] = summary["next_month_count"] or 0
-    return summary, by_category
+    return summary, by_category, by_category_paid
 
 
 def get_all_bills_totals(user_id, next_month_start):

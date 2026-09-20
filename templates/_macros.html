@@ -92,6 +92,14 @@
 {% macro topbar_nav(page, pending_count) %}
 <header class="topbar">
   <nav class="taskbar-nav">
+    {% set overdue = overdue_count() %}
+    {% if overdue %}
+    <a class="btn-link overdue-alert" href="{{ url_for('index', tab='this_month', status='unpaid', panel='bills') }}"
+       title="{{ overdue }} unpaid bill{{ 's' if overdue != 1 else '' }} past due">
+      <span class="btn-icon">{{ icon_svg('exclamation-circle') }}</span>
+      <span class="badge danger">{{ overdue }}</span>
+    </a>
+    {% endif %}
     {% if page == 'review' %}
     <a class="btn-link" href="{{ url_for('index') }}">&larr; Back to bills</a>
     {% elif page == 'reminder_settings' %}

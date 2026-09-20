@@ -280,6 +280,26 @@ tr.paid td {
   color: var(--text-muted);
 }
 
+tr.overdue td {
+  /* Same fixed solid red as the other urgent/danger UI (the overdue
+     topbar alert, the delete-confirm button) - not a --danger-* variable,
+     since those are tuned as light-mode-only foreground colors and flip
+     to a pale, low-contrast shade in dark mode. */
+  color: #c0392b;
+}
+
+.overdue-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.3rem;
+  color: #c0392b;
+}
+
+.overdue-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 .actions form {
   display: inline;
 }
@@ -435,6 +455,31 @@ button.theme-swatch.selected {
   padding: 0 0.5rem;
   font-size: 0.75rem;
   margin-left: 0.3rem;
+}
+
+.badge.danger {
+  /* A fixed solid red, not var(--danger-text) - see button.confirm-yes for
+     why that variable is unsuitable as a fill color (it's meant as a
+     foreground text color and flips to a pale, low-contrast shade in dark
+     mode). This is an urgent alert, so it stays a consistent bold red
+     regardless of theme/dark-mode. */
+  background: #c0392b;
+  color: #fff;
+  margin-left: 0.25rem;
+}
+
+/* .taskbar-nav .btn-link already sets a semi-transparent white
+   border-color for every topbar pill (2-class specificity) - matching
+   that specificity here (rather than the bare .overdue-alert 1-class
+   version) is what actually lets this win instead of silently losing to
+   that rule. */
+.taskbar-nav .overdue-alert {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.overdue-alert:hover {
+  background: var(--danger-bg);
 }
 
 .status-pill {
@@ -722,11 +767,19 @@ button.theme-swatch.selected {
 }
 
 
+.pie-grid {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
 .pie-row {
   display: flex;
   gap: 2rem;
   align-items: center;
   flex-wrap: wrap;
+  flex: 1;
+  min-width: 300px;
 }
 
 .donut {
