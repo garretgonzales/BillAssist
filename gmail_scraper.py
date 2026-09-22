@@ -1,11 +1,3 @@
-"""Scans Gmail for bill/invoice emails, and sends bill-reminder emails.
-
-Nothing found by scanning is written to the real `bills` table directly -
-matches land in `pending_bills` so a human confirms vendor/amount/due-date
-before they count as a real bill. Email parsing is heuristic and gets
-things wrong. Sending is limited to composing and sending reminder emails
-this app writes itself - never anything read from Gmail.
-"""
 import base64
 import json
 import os
@@ -25,19 +17,11 @@ APP_DIR = Path(__file__).parent
 CREDENTIALS_PATH = APP_DIR / "credentials.json"
 TOKEN_PATH = APP_DIR / "token.json"
 
-# Read-only scanning, plus send - needed for reminder emails. This app never
-# reads, modifies, or deletes anything beyond what gmail.readonly grants,
-# and gmail.send only ever sends messages this app itself composed.
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
 ]
 
-# Always a "Web application" OAuth client, whether the app is running
-# truly locally or on a Compute Engine VM reached through an IAP tunnel -
-# either way the browser's address bar (and thus the redirect target)
-# reads http://localhost:PORT, since the tunnel forwards a local port to
-# the VM. That's what makes one fixed redirect URI work in both setups.
 REDIRECT_URI = os.environ.get("OAUTH_REDIRECT_URI", "http://localhost:5432/oauth2callback")
 if REDIRECT_URI.startswith("http://localhost") or REDIRECT_URI.startswith("http://127.0.0.1"):
     os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
@@ -52,21 +36,14 @@ DUE_HINT_RE = re.compile(
     r"(due\s*(?:date|by|on)?\s*[:\-]?\s*)([A-Za-z0-9,\.\/\- ]{4,40})", re.IGNORECASE
 )
 
-
 class NoCredentials(Exception):
-    """credentials.json is missing, the saved token predates a scope this
-    app now needs, or there's no token at all - either way, a user must
-    go through /gmail/authorize before this call can succeed. A web app
-    can't pop a browser open itself the way a desktop script could, so
-    this is raised for the caller (a Flask route) to redirect there."""
-
+    pass
 
 def _require_credentials_file():
     if not CREDENTIALS_PATH.exists():
         raise NoCredentials(
             f"Missing {CREDENTIALS_PATH}. Follow the Gmail setup steps in README.md first."
         )
-
 
 def build_flow(state=None, code_verifier=None):
     _require_credentials_file()
@@ -77,20 +54,7 @@ def build_flow(state=None, code_verifier=None):
         flow.code_verifier = code_verifier
     return flow
 
-
 def get_authorization_url():
-    """Starts the web OAuth flow: returns (url, state, code_verifier) -
-    redirect the user's browser to `url`, and stash both `state` and
-    `code_verifier` (e.g. in the session) to use when they land back on
-    the callback route. Some OAuth clients now require PKCE - without
-    passing the same verifier back at token-exchange time, Google
-    rejects the exchange with 'Missing code verifier'.
-
-    select_account forces Google's account chooser instead of silently
-    reusing whichever Google account the browser last consented with -
-    needed so a second/third "Connect another Gmail account" click can
-    actually pick a different account instead of just re-granting the
-    same one."""
     flow = build_flow()
     flow.autogenerate_code_verifier = True
     auth_url, state = flow.authorization_url(
@@ -98,18 +62,7 @@ def get_authorization_url():
     )
     return auth_url, state, flow.code_verifier
 
-
 def exchange_code_for_token(user_id, state, authorization_response_url, code_verifier, account_id=None):
-    """Call from the /oauth2callback route with the state and code_verifier
-    you stashed, and the full callback URL (request.url).
-
-    account_id=None means "connect a new account": the resulting token is
-    matched to an existing gmail_accounts row by email address (so
-    re-granting the same Google account updates it in place instead of
-    creating a duplicate), or inserted as a new row otherwise. Passing an
-    account_id (reconnecting one specific already-connected account whose
-    token expired/was revoked) updates that row directly. Returns the
-    account_id that was created or updated."""
     flow = build_flow(state=state, code_verifier=code_verifier)
     flow.fetch_token(authorization_response=authorization_response_url)
     token_json = flow.credentials.to_json()
@@ -126,17 +79,7 @@ def exchange_code_for_token(user_id, state, authorization_response_url, code_ver
         return existing["id"]
     return db.add_gmail_account(user_id, token_json, email_address=email_address)
 
-
 def get_service(account_id, allow_interactive=True):
-    """allow_interactive is unused now (kept so existing call sites don't
-    need to change) - a web app can never open a browser on the user's
-    behalf, so the only way to (re-)authorize is always the same: raise
-    NoCredentials and let the caller redirect to reconnect that account.
-
-    account_id is a gmail_accounts.id, already resolved from a user-scoped
-    lookup by the caller (list_gmail_accounts/get_gmail_account) - this
-    function itself does no ownership check, same as the old user_id-keyed
-    version trusted its caller's user_id."""
     _require_credentials_file()
 
     account = db.get_gmail_account_row(account_id)
@@ -145,7 +88,7 @@ def get_service(account_id, allow_interactive=True):
 
     creds = Credentials.from_authorized_user_info(json.loads(account["token_json"]), SCOPES)
     if not creds.scopes or not set(SCOPES).issubset(set(creds.scopes)):
-        creds = None  # saved token predates a scope we now need
+        creds = None
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -158,11 +101,6 @@ def get_service(account_id, allow_interactive=True):
 
     service = build("gmail", "v1", credentials=creds)
 
-    # Legacy rows migrated from the old single-token table don't know their
-    # own email address yet (that endpoint was never called for them) -
-    # fill it in opportunistically the first time we successfully build a
-    # working service for this account, so Settings can show a real
-    # address instead of "Account #3" forever.
     if not account["email_address"]:
         try:
             db.update_gmail_account_token(
@@ -173,10 +111,8 @@ def get_service(account_id, allow_interactive=True):
 
     return service
 
-
 def get_own_email_address(service):
     return service.users().getProfile(userId="me").execute()["emailAddress"]
-
 
 def send_email(service, to_address, subject, body_text):
     message = MIMEText(body_text)
@@ -185,13 +121,11 @@ def send_email(service, to_address, subject, body_text):
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
     service.users().messages().send(userId="me", body={"raw": raw}).execute()
 
-
 def _header(headers, name):
     for h in headers:
         if h["name"].lower() == name.lower():
             return h["value"]
     return ""
-
 
 def _vendor_from_from_header(from_header):
     match = re.match(r"^\s*\"?([^\"<]+?)\"?\s*<", from_header)
@@ -199,15 +133,12 @@ def _vendor_from_from_header(from_header):
         return match.group(1).strip()
     return from_header.split("@")[-1].split(">")[0].strip() or from_header
 
-
 def _domain_from_from_header(from_header):
     match = re.search(r"@([\w.\-]+)>?\s*$", from_header.strip())
     return match.group(1).lower() if match else None
 
-
 def _normalize_vendor(vendor):
     return re.sub(r"[^a-z0-9]", "", (vendor or "").lower())
-
 
 def _already_tracked(vendor, domain, known_vendors, known_domains):
     if domain and domain in known_domains:
@@ -215,9 +146,7 @@ def _already_tracked(vendor, domain, known_vendors, known_domains):
     norm = _normalize_vendor(vendor)
     return bool(norm) and norm in known_vendors
 
-
 def _decode_body(payload):
-    """Best-effort plain-text extraction from a Gmail message payload."""
     if payload.get("mimeType") == "text/plain" and payload.get("body", {}).get("data"):
         return base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
 
@@ -227,18 +156,15 @@ def _decode_body(payload):
             return text
     return ""
 
-
 def _extract_amount(text):
     amounts = [float(a.replace(",", "")) for a in AMOUNT_RE.findall(text)]
     if not amounts:
         return None
     return max(amounts)
 
-
 def _extract_due_date(text):
     match = DUE_HINT_RE.search(text)
     candidates = [match.group(2)] if match else []
-    # fall back: try parsing any date-shaped token in the first 500 chars
     for candidate in candidates:
         try:
             return dateparser.parse(candidate, fuzzy=True).date().isoformat()
@@ -246,26 +172,7 @@ def _extract_due_date(text):
             continue
     return None
 
-
 def scan(user_id, query=None, max_results=50):
-    """Fetch candidate bill emails and insert unseen, not-already-tracked ones
-    into pending_bills. Any vendor you've already added manually or approved
-    from a previous scan is skipped so it doesn't keep coming back for
-    review, and any exact email you've explicitly rejected before is
-    skipped too (even though rejecting deletes its pending_bills row,
-    rejected_messages remembers it permanently) - otherwise it would just
-    resurface on the very next scan for as long as it stays within the
-    lookback window.
-
-    Scans every Gmail account this user has connected, not just one - a
-    single account with an expired/revoked token is skipped (reported back
-    in `errors`) rather than failing the whole scan, so the other connected
-    accounts still get scanned.
-
-    Returns (inserted_count, skipped_count, errors) - errors is a list of
-    account labels (email address, or "account #N" if not yet known) that
-    couldn't be scanned and need reconnecting in Settings.
-    """
     accounts = db.list_gmail_accounts(user_id)
     if not accounts:
         raise NoCredentials(

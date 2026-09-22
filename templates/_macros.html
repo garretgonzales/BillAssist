@@ -71,11 +71,6 @@
 </div>
 {% endmacro %}
 
-{# page: 'index' | 'edit' | 'settings' | 'reminder_settings' | 'review' -
-   decides which nav items show, since that varies systematically by page
-   rather than arbitrarily (see the DRY-up that introduced this macro).
-   Reminder Settings is nested under Settings - reached via the Settings
-   button, not its own top-level nav item. #}
 {% macro page_title(page, pending_count, title=None) %}
 {% if page == 'review' %}
 <h1 class="page-title">
@@ -124,10 +119,6 @@
 </header>
 {% endmacro %}
 
-{# Convenience wrapper for every page except index.html, which needs the
-   title and topbar split apart so it can wrap only the topbar (and
-   everything below it) in the single-overlay privacy shield - see
-   index.html and .privacy-shield in style.css. #}
 {% macro nav_header(page, pending_count, title=None) %}
 {{ page_title(page, pending_count, title) }}
 {{ topbar_nav(page, pending_count) }}

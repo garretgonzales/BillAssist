@@ -4,15 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-# OS Login derives the VM username from your Google account email
-# (you@example.com -> you_example_com) - check `whoami` on the VM if this
-# ever needs updating.
 User=your-oslogin-username
 WorkingDirectory=/home/your-oslogin-username/BillTracker
 Environment=PORT=8080
-# Only needed if you're reaching the app through a stable domain (e.g. a
-# Cloudflare Tunnel) instead of the IAP tunnel's localhost redirect - see
-# deploy/README.md's "Gmail OAuth on the VM" section.
 Environment=OAUTH_REDIRECT_URI=https://your-domain.example/oauth2callback
 ExecStart=/home/your-oslogin-username/BillTracker/venv/bin/gunicorn -w 2 -b 0.0.0.0:8080 app:app
 Restart=on-failure

@@ -1,9 +1,5 @@
 :root {
-  /* A bolder, more saturated indigo than the old soft blue - solid
-     fills of this color (not just thin borders/small accents) are what
-     create the reference design's block-based separation, so it needs
-     to read clearly with white text on top of it. */
-  --accent: #4a3aeb;
+    --accent: #4a3aeb;
   --accent-dark: #372ec2;
   --accent-soft: #ece9fd;
   --accent-ink: #4a3aeb;
@@ -20,25 +16,13 @@
   --paid-text: #15803d;
   --unpaid-bg: #fff4e5;
   --unpaid-text: #b45309;
-  /* Flat neutral chip used by plain buttons/links/notes (not the accent
-     or danger ones) - its own variable rather than a literal color so
-     dark mode can swap in a dark-mode-appropriate pair instead of
-     staying a near-white chip with near-white text on top of it. */
-  --btn-bg: #f3f3f7;
+    --btn-bg: #f3f3f7;
   --btn-bg-hover: #e9e9f0;
-  /* Frosted-glass backdrop behind the "Click to reveal"/"Tap to unlock"
-     privacy veil - needs its own variable (not derived from --bg) since
-     it carries an alpha channel for the blur to show through. */
-  --veil-bg: rgba(244, 244, 248, 0.55);
+    --veil-bg: rgba(244, 244, 248, 0.55);
 }
 
 * { box-sizing: border-box; }
 
-/* Visible by default (not activated by a JS class) so it's guaranteed
-   to cover the page from the very first paint - the inline script right
-   after it in index.html decides within the same tick whether to hide
-   it immediately or let it show briefly, per whether this is a first
-   visit or a return after being away a while. */
 .splash-screen {
   position: fixed;
   inset: 0;
@@ -78,8 +62,6 @@ body {
   background: var(--bg);
 }
 
-/* Page title - sits above the topbar, independent of it, no background
-   of its own (just the page's own gradient behind it). */
 .page-title {
   font-size: 1.15rem;
   margin: 0 0 0.75rem;
@@ -92,20 +74,10 @@ body {
   line-height: 1.15;
   margin: 0;
   padding: 1.5rem 1.5rem 1rem;
-  /* One solid color for the whole header zone (greeting + nav buttons),
-     a different one for the rest of the page below - same block-based
-     separation as the reference, rather than a plain page title. Only
-     rounded on top; see .page-title.greeting + .privacy-shield .topbar
-     below, which rounds only the bottom, so the two sit flush as one
-     shape. */
-  background: var(--accent);
+    background: var(--accent);
   color: var(--on-accent);
   border-radius: 20px 20px 0 0;
-  /* A long custom greeting (or long name) wraps onto its own line(s)
-     instead of overflowing the page horizontally or getting clipped -
-     break-word also covers a single very long word with no spaces to
-     wrap at. */
-  max-width: 100%;
+    max-width: 100%;
   overflow-wrap: break-word;
   word-break: break-word;
 }
@@ -114,22 +86,13 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  /* Solid fill instead of a bordered white bar - separation from the
-     page comes from the color block itself, same as the reference's
-     header sections, rather than a thin outline. Now holds only the
-     nav buttons, not the page title. */
-  background: var(--accent);
+    background: var(--accent);
   border: none;
   border-radius: 20px;
   padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
 }
 
-/* Only when the greeting sits directly above it (index page) - other
-   pages' plain (uncolored) title isn't visually joined to the topbar,
-   so it keeps its own full rounding there instead. .topbar is nested
-   inside .privacy-shield now (not a direct sibling of the greeting
-   anymore), hence the descendant selector rather than +. */
 .page-title.greeting + .privacy-shield .topbar {
   border-radius: 0 0 20px 20px;
 }
@@ -145,15 +108,9 @@ body {
 .taskbar-nav .inline-form button {
   font-size: 0.78rem;
   padding: 0.4rem 0.75rem;
-  /* The default border color is a near-invisible light gray, tuned for
-     sitting on a white card - too faint to read against the topbar's
-     solid indigo fill, so it's overridden specifically here. */
-  border-color: rgba(255, 255, 255, 0.55);
+    border-color: rgba(255, 255, 255, 0.55);
 }
 
-/* .btn-link.active is solid accent + white text, which would vanish
-   against the topbar's own now-solid-accent background - inverted here
-   so it still reads as clearly "selected" against that fill. */
 .taskbar-nav .btn-link.active {
   background: var(--on-accent);
   border-color: var(--on-accent);
@@ -282,11 +239,7 @@ tr.paid td {
 }
 
 tr.overdue td {
-  /* Same fixed solid red as the other urgent/danger UI (the overdue
-     topbar alert, the delete-confirm button) - not a --danger-* variable,
-     since those are tuned as light-mode-only foreground colors and flip
-     to a pale, low-contrast shade in dark mode. */
-  color: #c0392b;
+    color: #c0392b;
 }
 
 .overdue-icon {
@@ -459,21 +412,11 @@ button.theme-swatch.selected {
 }
 
 .badge.danger {
-  /* A fixed solid red, not var(--danger-text) - see button.confirm-yes for
-     why that variable is unsuitable as a fill color (it's meant as a
-     foreground text color and flips to a pale, low-contrast shade in dark
-     mode). This is an urgent alert, so it stays a consistent bold red
-     regardless of theme/dark-mode. */
-  background: #c0392b;
+    background: #c0392b;
   color: #fff;
   margin-left: 0.25rem;
 }
 
-/* .taskbar-nav .btn-link already sets a semi-transparent white
-   border-color for every topbar pill (2-class specificity) - matching
-   that specificity here (rather than the bare .overdue-alert 1-class
-   version) is what actually lets this win instead of silently losing to
-   that rule. */
 .taskbar-nav .overdue-alert {
   border-color: #c0392b;
   color: #c0392b;
@@ -527,23 +470,15 @@ button.theme-swatch.selected {
   height: 16px;
 }
 
-/* Category icon badge, same soft-circle-with-colored-icon treatment as
-   the Mint reference's transaction list rows. */
 .category-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* em, not px - scales with whatever font-size is active wherever this
-     is used, so it always reads as "the same size as the text" instead
-     of a fixed size that only looks right in one context. */
-  width: 1.5em;
+    width: 1.5em;
   height: 1.5em;
   border-radius: 50%;
-  /* Keep bill icons neutral so a dark or saturated accent cannot make the
-     icon and its badge blend together. Accent remains reserved for the
-     selected state and other intentional emphasis. */
-  background: var(--btn-bg);
+    background: var(--btn-bg);
   color: var(--text);
   border: 1px solid var(--border);
   margin-right: 0.4em;
@@ -748,8 +683,6 @@ button.theme-swatch.selected {
   margin-bottom: 1rem;
 }
 
-/* ---- dashboard ---- */
-
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -778,7 +711,6 @@ button.theme-swatch.selected {
   font-weight: 700;
   color: var(--text);
 }
-
 
 .pie-grid {
   display: flex;
@@ -881,8 +813,6 @@ button.theme-swatch.selected {
   transform: translateY(-1px);
 }
 
-/* ---- bills header / tabs ---- */
-
 .bills-header {
   display: flex;
   justify-content: space-between;
@@ -931,8 +861,6 @@ button.theme-swatch.selected {
   color: var(--on-accent);
 }
 
-/* ---- modal ---- */
-
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -980,8 +908,6 @@ button.theme-swatch.selected {
 .modal-header .section-title {
   margin-bottom: 0;
 }
-
-/* ---- icon buttons / row actions ---- */
 
 .icon-btn {
   display: inline-flex;
@@ -1093,12 +1019,7 @@ button.icon-btn.pay-toggle:hover {
 }
 
 button.confirm-yes {
-  /* A fixed solid red, not var(--danger-text) - that variable is tuned
-     as a foreground text color against --danger-bg (dark red in light
-     mode, but light salmon in dark mode, meant to sit on a dark
-     background), not as a button fill; reusing it here as a background
-     would turn this into an unreadable pale-pink button in dark mode. */
-  background: #c0392b;
+    background: #c0392b;
   border-color: #c0392b;
   color: #fff;
   padding: 0.4rem 0.7rem;
@@ -1112,13 +1033,6 @@ button.confirm-yes:hover {
   padding: 0.4rem 0.7rem;
 }
 
-/* ---- section switcher ---- */
-/* One panel shown at a time, all rendered at the same full width - a tab
-   row (reusing the .tabs/.tab pill styling used elsewhere) switches which
-   one, instead of the old side-by-side "aside cards you click on" layout,
-   which produced two identical arrow icons once a 3rd card was added and
-   never let same-sized cards sit next to each other. */
-
 .panel-switcher {
   margin-bottom: 1rem;
 }
@@ -1131,11 +1045,6 @@ button.confirm-yes:hover {
   display: none;
 }
 
-/* Horizontal slide-in when a new tile is selected via the tab row -
-   direction depends on whether the newly selected tab sits to the
-   right or left of the previous one (set by JS). display:none -> block
-   can't itself be transitioned, but a CSS animation always plays from
-   its 0% keyframe regardless, so it works fine across that swap. */
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(28px); }
   to { opacity: 1; transform: translateX(0); }
@@ -1163,8 +1072,7 @@ button.confirm-yes:hover {
 }
 
 @media (max-width: 720px) {
-  /* Touch targets + form usability on phones */
-  body {
+    body {
     margin: 1rem auto;
   }
 
@@ -1186,8 +1094,7 @@ button.confirm-yes:hover {
   }
 
   input, select {
-    font-size: 16px; /* below 16px, iOS Safari zooms in on focus */
-  }
+    font-size: 16px;   }
 
   .row input, .row select {
     flex: 1 1 160px;
@@ -1203,8 +1110,7 @@ button.confirm-yes:hover {
   }
 
   button, .btn-link, .tab {
-    padding: 0.55rem 0.9rem; /* taller tap targets than the mouse-sized default */
-  }
+    padding: 0.55rem 0.9rem;   }
 
   .modal-panel {
     padding: 1.1rem;
@@ -1214,9 +1120,7 @@ button.confirm-yes:hover {
     font-size: 1.45rem;
   }
 
-  /* Reminders + Pending matches (review.html) as swipeable slides
-     instead of stacked full-height cards, to save vertical space. */
-  .review-carousel {
+    .review-carousel {
     display: flex;
     overflow-x: auto;
     gap: 1rem;
@@ -1234,13 +1138,7 @@ button.confirm-yes:hover {
     margin-bottom: 0;
   }
 
-  /* Overview/Your Bills/Estimated Payments/Totals, all inline in one
-     row with no scrolling - equal-width, shrinking together rather
-     than sizing to each label's text, so all four always fit. Long
-     labels (Estimated Payments) wrap to a second line instead of
-     overflowing. No horizontal scrolling anywhere on this page now -
-     switching tiles is click/tap only, via these tabs. */
-  #panel-switcher {
+    #panel-switcher {
     flex-wrap: nowrap;
   }
 
@@ -1254,22 +1152,12 @@ button.confirm-yes:hover {
     text-align: center;
     font-size: 0.78rem;
     padding: 0.5rem 0.4rem;
-    /* The row (flex, default align-items:stretch) makes every tab match
-       the height of the tallest one (e.g. "Estimated Payments" wrapping
-       to 2 lines) - without this, a shorter single-line tab's text sits
-       at the top of that taller bubble instead of filling/centering in
-       it, leaving visible empty space below. */
-    display: flex;
+        display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  /* Totals is reached via its own tab on mobile instead of the flip
-     card - neutralize the 3D flip entirely here rather than just
-     hiding the button, since perspective/preserve-3d on in-flow
-     content (the front face) is what caused the repeated touch-scroll
-     bugs, even when the flip itself was never triggered. */
-  .flip-scene {
+    .flip-scene {
     perspective: none;
   }
 
@@ -1288,10 +1176,6 @@ button.confirm-yes:hover {
   }
 }
 
-/* Safety net: a stale localStorage focus of "totals" from a mobile
-   session should never show this panel if later loaded past the mobile
-   breakpoint (e.g. resizing a window) - desktop reaches Totals via the
-   flip card instead. */
 @media (min-width: 721px) {
   .focus-panel.mobile-only-panel {
     display: none !important;
@@ -1312,22 +1196,15 @@ button.confirm-yes:hover {
     height: 42px;
   }
 
-  /* The SVGs inside .icon-btn carry fixed width/height="16" attributes
-     in the markup - without this override, growing the button above
-     just adds empty padding instead of a bigger glyph. */
-  .icon-btn svg {
+    .icon-btn svg {
     width: 20px;
     height: 20px;
   }
 }
 
-/* Tables can outgrow a phone screen (Actions column alone is ~200px) -
-   scope the scroll to the table itself so the page never scrolls sideways. */
 .table-scroll {
   overflow-x: auto;
 }
-
-/* ---- your bills / totals flip card ---- */
 
 .flip-scene {
   perspective: 2000px;
@@ -1338,13 +1215,7 @@ button.confirm-yes:hover {
   width: 100%;
   transform-style: preserve-3d;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Forces its own compositing layer - without this, WebKit (iOS Safari
-     and Chrome-on-iOS, which is WebKit underneath regardless of name)
-     can (a) let the "hidden" backface flash briefly mid-transition
-     despite backface-visibility:hidden, and (b) fail to recognize touch
-     scroll gestures over in-flow content sitting inside this 3D context,
-     needing multiple attempts to register. */
-  will-change: transform;
+    will-change: transform;
 }
 
 .flip-card.flipped {
@@ -1364,28 +1235,15 @@ button.confirm-yes:hover {
 }
 
 .flip-face.flip-back .card {
-  /* Bounded + its own scroll, so a long bill list never spills past its
-     box - that spillover (not clipped) is what let the invisible back
-     face inflate the whole page's scrollable height when showing the
-     front. The front face is deliberately left as plain in-flow content
-     instead - it never had that spillover problem, and giving it a
-     nested scroll box was what broke touch scrolling there earlier. */
-  max-height: 640px;
+    max-height: 640px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-
 
 .modal-hint {
   margin-top: 0.75rem;
 }
 
-/* ---- privacy shield ---- */
-
-/* One overlay for the whole page below the greeting, instead of a
-   separate blur+veil per panel/topbar - the veil's own backdrop-filter
-   blurs whatever sits behind it, so nothing underneath needs its own
-   filter, and there's nothing to miss if a new panel is added later. */
 .privacy-shield {
   position: relative;
 }
