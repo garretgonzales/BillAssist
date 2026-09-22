@@ -62,10 +62,15 @@
     {% endif %}
   </section>
 
-  <section class="card">
+    <section class="card">
     {% for p in pending %}
     <form method="post" action="{{ url_for('approve_pending', pending_id=p['id']) }}" class="pending-row">
-      <div class="snippet">&ldquo;{{ p['snippet'] }}&rdquo; <span class="hint">({{ p['email_date'] }})</span></div>
+      <div class="pending-heading">
+        <strong>{{ p['vendor'] or 'Possible bill' }}</strong>
+        {% if p['sender_domain'] %}<span class="hint">{{ p['sender_domain'] }}</span>{% endif %}
+        {% if p['email_date'] %}<span class="hint">{{ p['email_date'] }}</span>{% endif %}
+      </div>
+      <div class="snippet">&ldquo;{{ p['snippet']|clean_email_preview }}&rdquo;</div>
       <div class="row">
         <input name="vendor" value="{{ p['vendor'] or '' }}" placeholder="Vendor">
         <input name="amount" type="number" step="0.01" inputmode="decimal" value="{{ p['amount'] if p['amount'] is not none else '' }}" placeholder="Amount">

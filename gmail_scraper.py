@@ -247,7 +247,7 @@ def _extract_due_date(text):
     return None
 
 
-def scan(user_id, query=None, max_results=25):
+def scan(user_id, query=None, max_results=50):
     """Fetch candidate bill emails and insert unseen, not-already-tracked ones
     into pending_bills. Any vendor you've already added manually or approved
     from a previous scan is skipped so it doesn't keep coming back for

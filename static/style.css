@@ -6,6 +6,7 @@
   --accent: #4a3aeb;
   --accent-dark: #372ec2;
   --accent-soft: #ece9fd;
+  --accent-ink: #4a3aeb;
   --on-accent: #ffffff;
   --bg: #f4f4f8;
   --card-bg: #ffffff;
@@ -174,7 +175,7 @@ body {
   letter-spacing: 0.06em;
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-bottom: 0.35rem;
 }
 
@@ -539,8 +540,12 @@ button.theme-swatch.selected {
   width: 1.5em;
   height: 1.5em;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
+  /* Keep bill icons neutral so a dark or saturated accent cannot make the
+     icon and its badge blend together. Accent remains reserved for the
+     selected state and other intentional emphasis. */
+  background: var(--btn-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
   margin-right: 0.4em;
   vertical-align: middle;
 }
@@ -724,6 +729,14 @@ button.theme-swatch.selected {
 .pending-row {
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 0;
+}
+
+.pending-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
 }
 
 .snippet {
@@ -1283,6 +1296,29 @@ button.confirm-yes:hover {
   .focus-panel.mobile-only-panel {
     display: none !important;
   }
+
+  .category-icon {
+    width: 2em;
+    height: 2em;
+  }
+
+  .category-icon svg {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  /* The SVGs inside .icon-btn carry fixed width/height="16" attributes
+     in the markup - without this override, growing the button above
+     just adds empty padding instead of a bigger glyph. */
+  .icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* Tables can outgrow a phone screen (Actions column alone is ~200px) -
@@ -1377,7 +1413,7 @@ button.confirm-yes:hover {
 }
 
 .privacy-veil svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .privacy-veil-label {

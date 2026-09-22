@@ -246,6 +246,10 @@ def _derive_theme_shades(hex_color, dark=False):
         "accent": hex_color,
         "accent-dark": shade(l - 0.12, s),
         "accent-soft": shade(soft_lightness, min(1.0, s * 0.6 + 0.15)),
+        # Accent is also used as a foreground color in a few places. In
+        # dark mode, white is the dependable readable ink against the dark
+        # page/card surfaces, regardless of how dark a preset is.
+        "accent-ink": "#ffffff" if dark else hex_color,
         "on-accent": "#16161f" if luminance > 0.6 else "#ffffff",
     }
 
@@ -322,6 +326,12 @@ def format_mmddyyyy(value):
     if not value:
         return value
     return date.fromisoformat(value).strftime("%m/%d/%Y")
+
+
+@app.template_filter("clean_email_preview")
+def clean_email_preview(value):
+    """Keep review previews compact and readable without changing stored mail."""
+    return re.sub(r"\s+", " ", value or "").strip()
 
 
 def _build_pie_slices(by_category, total):
