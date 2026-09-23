@@ -1,206 +1,305 @@
-# Bill Tracker
+<div align="center">
 
-Bill tracker with a Flask web UI, SQLite storage, and an optional Gmail
-scan that finds candidate bill emails for you to review and approve.
-Nothing from Gmail is added to your bill list automatically - matches sit
-in a review queue until you confirm vendor/amount/due date.
+<h1>🧾 Bill Tracker</h1>
 
-Supports multiple people sharing one instance, each with their own login
-and their own private bills/incomes/reminders/Gmail connection - see
-"Accounts" below.
+<p><strong>Keep household bills visible, organized, and on time.</strong></p>
 
-Bills can repeat on a set schedule (every N days/weeks/months/years) - when
-you mark one paid, the next occurrence is created automatically with the
-due date rolled forward.
+<p>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="Flask" src="https://img.shields.io/badge/Flask-Web_App-000000?style=for-the-badge&logo=flask&logoColor=white" />
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-Storage-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
+  <img alt="Gmail API" src="https://img.shields.io/badge/Gmail-Optional_Integration-EA4335?style=for-the-badge&logo=gmail&logoColor=white" />
+</p>
 
-It can also email you a reminder (to your own Gmail address) for bills
-that are overdue, due soon, or missing a due date - automatically once a
-day, or on demand from the Review page. See "Gmail setup" below.
+</div>
 
-## Set up from a fresh clone
+Bill Tracker is a Flask web application for managing household bills, incomes, reminders, and recurring payments. It stores data in SQLite and can optionally scan connected Gmail accounts for candidate bills that you review and approve before they enter your bill list.
 
+Nothing from Gmail is added automatically. Matches stay in a review queue until you confirm the vendor, amount, and due date.
+
+| 🧾 Bill organization | 🔒 Private accounts | 📬 Optional Gmail automation |
+| :---: | :---: | :---: |
+| Track bills, incomes, categories, due dates, recurring schedules, and payment history. | Each person has a separate login and private bills, reminders, income, and Gmail connections. | Find candidate bill emails and send personalized reminders without requiring Gmail features. |
+
+## 📑 Contents
+
+- [Current features](#-current-features)
+- [How the bill workflow works](#-how-the-bill-workflow-works)
+- [Accounts and privacy](#-accounts-and-privacy)
+- [Personalization](#-personalization)
+- [Gmail scanning](#-gmail-scanning)
+- [Reminders](#-reminders)
+- [Technology stack](#-technology-stack)
+- [Run locally](#-run-locally)
+- [Verification](#-verification)
+- [Deployment](#-deployment)
+- [Project structure](#-project-structure)
+- [Security and local data](#-security-and-local-data)
+
+## ✨ Current features
+
+### Bill management
+
+- Add, edit, and delete bills with vendors, amounts, due dates, notes, categories, and icons.
+- Mark bills paid and automatically create the next occurrence for recurring bills.
+- Repeat bills every N days, weeks, months, or years.
+- Track incomes alongside bills.
+- Review unpaid bills, overdue bills, bills due soon, and bills without due dates.
+- Configure general reminder lead times or vendor-specific lead times.
+
+### Gmail-assisted workflow
+
+- Connect more than one Gmail account per user.
+- Scan recent mail for messages that look like bills, invoices, or statements.
+- Extract candidate amounts and due dates using email-body heuristics.
+- Deduplicate candidates by Gmail message ID.
+- Review, edit, approve, or reject candidates before they become bills.
+- Avoid repeatedly suggesting vendors already added or approved in the past.
+- Reconnect or disconnect individual Gmail accounts without affecting the others.
+
+### Reminders
+
+- Send a digest for unpaid bills that are overdue, due within the configured lead time, or missing a due date.
+- Send reminders manually from the Review page.
+- Automatically check once per calendar day when a user opens the dashboard.
+- Run an independent daily systemd timer so reminders can send even when nobody opens the app.
+- Send each reminder from a connected Gmail account to that same account.
+- Skip empty reminder emails when no bills currently qualify.
+
+### Account experience
+
+- Sign up and log in at `/signup` and `/login`.
+- Keep bills, incomes, categories, settings, reminders, and Gmail connections private per account.
+- Stay signed in on a device for one year.
+- Customize the greeting shown throughout the app.
+- Choose from 22 preset theme colors or provide a custom hex color.
+- Toggle dark mode and automatically derive readable accent shades and text contrast.
+- Choose a built-in icon when adding or editing a bill.
+
+## 🔄 How the bill workflow works
+
+```text
+Sign up or log in
+        |
+        v
+Add bills manually or connect Gmail
+        |
+        v
+Review bills, income, due dates, and reminders
+        |
+        v
+Mark a bill paid
+        |
+        v
+Create the next recurring occurrence when applicable
+        |
+        v
+Send an on-demand or scheduled reminder digest
 ```
-git clone <this repo's URL>
-cd BillTracker
+
+Gmail scanning follows a separate approval flow:
+
+```text
+Connect a Gmail account
+        |
+        v
+Search recent messages for bill-like email
+        |
+        v
+Extract approximate vendor, amount, and due date
+        |
+        v
+Place new matches in the Review queue
+        |
+        v
+Approve, edit, or reject each candidate
+        |
+        v
+Add approved candidates to the bill list
+```
+
+## 🔒 Accounts and privacy
+
+Every person using an instance creates an account with an email address and password. Bills, incomes, categories, reminder settings, Gmail connections, and pending Gmail matches belong to the authenticated account that created them.
+
+The application is intended for a small trusted household rather than a public multi-tenant service. Once logged in, a device remains logged in for one year so household members are not repeatedly prompted for their password.
+
+## 🎨 Personalization
+
+The Settings page lets each account customize:
+
+- **Greeting:** Replace the default `Hi, <name>` text or clear it to restore the default.
+- **Theme color:** Choose one of 22 preset swatches or any custom hex value. The app derives darker, softer, and on-color shades from the selected color and automatically chooses readable white or dark text.
+- **Dark mode:** Switch the full application to a dark background with light text. The selected accent is re-derived for dark mode.
+- **Bill icons:** Select an icon from the built-in icon pack when adding or editing a bill.
+
+## 📬 Gmail scanning
+
+Gmail features are optional and configured per account. The OAuth client credentials are shared by the instance, while each person completes their own Google authorization flow.
+
+The scanner:
+
+- Searches recent mail, defaulting to the last 45 days, using subject keywords for bills, invoices, and statements.
+- Uses regular expressions and heuristics to estimate a dollar amount and due date from the message body.
+- Adds new matches to the Review page, deduplicated by Gmail message ID.
+- Skips vendors already added manually or approved from an earlier scan when the sender domain or exact vendor name matches.
+- Does not remember rejected matches, so a rejected candidate may appear again in a later scan.
+
+To change the search behavior, edit `DEFAULT_QUERY` in [`gmail_scraper.py`](gmail_scraper.py). It uses normal Gmail search syntax.
+
+### Connect multiple Gmail accounts
+
+From **Settings > Gmail Accounts**, each account can:
+
+- **Connect** another Gmail inbox through Google's consent flow.
+- **Reconnect** one account if its token expires or is revoked.
+- **Disconnect** one account while leaving other connected accounts active.
+
+"Scan Gmail now" scans every connected account and combines the results into one review queue. A token problem in one account does not block the others; the result identifies which account needs reconnection.
+
+### Gmail setup
+
+#### One-time setup for the instance owner
+
+1. Create or reuse a project at [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable the **Gmail API** under **APIs & Services > Library**.
+3. Create an OAuth client under **APIs & Services > Credentials**.
+   - Choose **Web application**.
+   - Add `http://localhost:5432/oauth2callback` as an authorized redirect URI.
+   - Use the same URI for local use or an IAP tunnel because the browser still connects through `localhost`.
+   - Set `OAUTH_REDIRECT_URI` if the application uses another port or callback URI.
+4. Configure the OAuth consent screen if Google asks. For personal or family use, add each participating Google account as a test user unless the app is published.
+5. Download the client secret JSON as `credentials.json` in the project root.
+
+#### Per-person setup
+
+1. Log in and click **Scan Gmail now** or **Send reminder now** on the Review page.
+2. Sign in to Google and grant access.
+3. The resulting token is stored in that user's row in `bills.db`, not in a shared token file.
+
+The app requests `gmail.readonly` for scanning and `gmail.send` for reminder emails. It never deletes or modifies mailbox messages and only sends the reminder emails it composes itself. If an older token lacks the send scope, the next manual reminder action prompts for consent again. The daily check skips silently until that consent has been granted interactively.
+
+## ⏰ Reminders
+
+A reminder includes every unpaid bill that is:
+
+- Overdue.
+- Due within the configured lead time, which defaults to three days and can be customized generally or per vendor.
+- Missing a due date.
+
+The dashboard-triggered check runs at most once per calendar day when that person loads the main dashboard. It sends only when Gmail is already authorized with the send scope.
+
+"Send reminder now" bypasses the once-per-day limit and is the only path that can open Google's interactive consent flow. The email is sent to the address reported by the authorized Google account, meaning each connected account receives its own digest from itself.
+
+For scheduled reminders independent of browser activity, install the daily timer described in [`deploy/README.md`](deploy/README.md). The timer loops over every account and uses each person's own bills, reminder settings, Gmail connection, and daily-send history.
+
+## 🧰 Technology stack
+
+| Layer | Technology |
+| --- | --- |
+| Web application | Python, Flask, Flask-Login |
+| Storage | SQLite |
+| Gmail integration | Gmail API, Google OAuth 2.0 |
+| Date handling | `python-dateutil` |
+| Production server | Gunicorn |
+| Scheduling | systemd service and timer units |
+| Deployment | Docker or Google Compute Engine behind IAP |
+| Frontend | Server-rendered Flask templates, HTML, CSS, and JavaScript |
+
+## 🚀 Run locally
+
+### Prerequisites
+
+- Python 3
+- `venv` support
+- A browser
+- Gmail OAuth credentials only if scanning or reminders are needed
+
+### Install and start
+
+```bash
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 venv/bin/python app.py
 ```
 
-First run creates `bills.db` (SQLite) and `flask_secret_key.txt`
-automatically - nothing to set up by hand. Open http://127.0.0.1:5432 and
-click **Sign up** to create the first account.
+On first run, the app creates `bills.db` and `flask_secret_key.txt` automatically. Nothing needs to be configured by hand for basic bill tracking.
 
-Gmail scanning/reminders are optional and per-account - see "Gmail setup"
-below whenever you want them; the app works fully without it, just without
-automatic bill detection or email reminders.
+Open [http://127.0.0.1:5432](http://127.0.0.1:5432) and click **Sign up** to create the first account.
 
-## Run it day to day
+Gmail scanning and reminders are optional. The application is fully usable without them.
 
+For a convenient local launcher, use [`run.sh`](run.sh), which sets `FLASK_DEBUG=1` and opens the browser:
+
+```bash
+./run.sh
 ```
+
+### Gmail-enabled local setup
+
+Save the downloaded OAuth client secret as `credentials.json` in the project root, then complete the per-person authorization flow from the Review page. Do not commit the credentials or generated local data files.
+
+## ✅ Verification
+
+Run the application directly:
+
+```bash
 venv/bin/python app.py
 ```
 
-(or write yourself a small launcher script like this project's own
-`run.sh`, which also sets `FLASK_DEBUG=1` and opens your browser)
+For a manual end-to-end check:
 
-Open http://127.0.0.1:5432 if it doesn't open automatically.
+1. Register a new account and log in.
+2. Add a bill and confirm it appears only for that account.
+3. Add a recurring bill, mark it paid, and verify the next occurrence is created with a rolled-forward due date.
+4. Configure a reminder lead time and confirm the Review page identifies qualifying bills.
+5. If Gmail is configured, connect an account and review a candidate before approving it.
+6. Send a reminder manually and confirm it reaches the authorized Gmail account.
+7. Connect a second account and verify its bills and Gmail data remain isolated from the first account.
+8. Toggle the theme color and dark mode, refresh the page, and confirm the settings persist.
 
-Want this reachable from somewhere other than this machine? See
-[`deploy/README.md`](deploy/README.md) for running it on a Compute Engine
-VM with no public IP, reachable only through an authenticated IAP tunnel
-(or a Cloudflare Tunnel, for a stable URL other people can use directly).
+## ☁️ Deployment
 
-## Accounts
+The included deployment path runs the application on a Google Compute Engine VM with no public IP. Access is through an authenticated IAP tunnel, so only identities granted the necessary Google IAM roles can reach the app.
 
-Every person using the app creates their own login at `/signup` (email +
-password). Everything - bills, incomes, categories, reminder settings,
-Gmail connection - is private to that account; nobody sees anyone else's
-data. Once logged in, a device stays logged in for a year (this is meant
-for a small trusted household, not a public service, so there's no
-repeated password-prompting).
+The VM setup uses Gunicorn behind a systemd service and forwards the internal application port to `http://127.0.0.1:5432` on the local machine. The complete setup, update, data-copy, Gmail OAuth, and reminder-timer instructions are in [`deploy/README.md`](deploy/README.md).
 
-## Personalizing your account
+For a fresh VM, the deployment flow is:
 
-The Settings page (top bar) lets each account customize a few things,
-saved per-account and independent of anyone else sharing the instance:
+1. Review and run [`deploy/gcp-setup.sh`](deploy/gcp-setup.sh).
+2. Copy the application to the VM through IAP.
+3. Install Python dependencies in a VM virtual environment.
+4. Install and enable `deploy/billtracker.service`.
+5. Start an IAP tunnel to the internal application port.
+6. Optionally install the system-level `billtracker-reminders.timer`.
 
-- **Greeting** - replace the default "Hi, <name>" shown at the top of
-  every page with your own text. Leave the field blank and save to go
-  back to the default.
-- **Theme color** - replace the app's default purple accent everywhere
-  it's used (topbar, buttons, active tabs, category icon badges, badges,
-  etc.) with a color of your choice. Pick one of the 22 preset swatches
-  for an instant one-click change, or click "Custom color..." to reveal a
-  full color picker for any hex value. "Reset to default" clears it and
-  goes back to the built-in purple. Under the hood, only your chosen
-  color is stored - the app derives matching darker/soft/on-color shades
-  from it automatically (via HLS color math), and picks white or dark
-  text over it automatically depending on how light the color is, so
-  contrast stays readable no matter what you pick.
-- **Dark mode** - a toggle switch that swaps the whole app to a dark
-  background with light text. Works together with theme color - the
-  accent color you picked (or the default purple) is automatically
-  re-derived with dark-mode-appropriate shades rather than reusing the
-  light-mode ones.
-- **Bill icons** - when adding or editing a bill, pick any icon from the
-  built-in icon pack to represent it, instead of the one guessed from its
-  category.
+The deployment guide also documents a local user-level reminder timer. Both timers default to 8:00 AM and can be changed in their `.timer` files.
 
-## Multiple Gmail accounts
+## 🗂️ Project structure
 
-Each person's account can connect more than one Gmail account, not just
-one - e.g. a personal inbox and a shared household/bills inbox. From
-Settings > Gmail Accounts:
+```text
+BillTracker/
+|- app.py                         # Flask routes, authentication, bills, Gmail, reminders
+|- db.py                          # SQLite schema, migrations, and data access
+|- gmail_scraper.py               # Gmail OAuth, scanning, and message matching
+|- daily_reminders.py             # Scheduled reminder entry point
+|- requirements.txt               # Python dependencies
+|- run.sh                         # Local debug launcher
+|- Dockerfile                     # Container build
+|- templates/                     # Server-rendered application pages
+|- static/                        # Stylesheet and favicon
+|- deploy/                        # GCP, systemd, and deployment documentation
+|- bills.db                       # Local private SQLite database, generated at runtime
+|- credentials.json               # Local Gmail OAuth client secret, not committed
+`- flask_secret_key.txt           # Generated Flask secret, not committed
+```
 
-- **Connect a Gmail account** - starts the same consent-screen flow as
-  before; repeat it to add another account (it always shows Google's
-  account chooser, so you can pick a different Google account each time).
-- **Reconnect** - re-grants one specific connected account whose token
-  expired or was revoked, without creating a duplicate.
-- **Disconnect** - removes one connected account; the others keep working.
+## 🔐 Security and local data
 
-"Scan Gmail now" scans every connected account and merges the results
-into one pending-review queue. "Send reminder now" (and the daily
-auto-reminder) sends the same digest of unpaid bills to each connected
-account, from that account to itself - so if you connect two inboxes,
-both get a copy of the reminder. One account's expired token doesn't
-block the others; the scan/reminder result tells you if an account needs
-reconnecting.
+`credentials.json`, `bills.db`, and `flask_secret_key.txt` are gitignored because they contain credentials, secrets, or private financial data. Do not commit them.
 
-## Gmail setup (required only if you want the scan or reminder features)
+A legacy `token.json` may exist from before Gmail tokens moved into the database. The application no longer reads it and it can be deleted after confirming it is no longer needed.
 
-This is per-account - each person who wants Gmail scanning/reminders sets
-this up once, tied to their own Google identity. The OAuth *client*
-(`credentials.json`) is shared app-wide and only needs to be created once
-by whoever's running the instance; the OAuth *authorization* (clicking
-through Google's consent screen) is done individually by each person.
+When copying the application to a cloud VM, the deployment process deliberately does not copy `bills.db` or `token.json` automatically. This prevents financial data and Gmail authorization data from being duplicated without an explicit decision.
 
-**One-time, done by whoever's running the instance:**
-
-1. Go to https://console.cloud.google.com/ and create a project (or reuse one).
-2. Enable the **Gmail API** for that project (APIs & Services > Library).
-3. Go to APIs & Services > Credentials > Create Credentials > OAuth client ID.
-   - Application type: **Web application**.
-   - Authorized redirect URI: `http://localhost:5432/oauth2callback`
-     (same value whether you're running truly locally or reaching the app
-     through a tunnel - the browser's address bar reads `localhost` either
-     way). If you're running on a different port, adjust accordingly, or
-     set the `OAUTH_REDIRECT_URI` environment variable to override it.
-4. Configure the OAuth consent screen if prompted (User type: External is
-   fine for personal/family use; add each Google account that'll use
-   Gmail features as a test user, unless you publish the app).
-5. Download the client secret JSON and save it as `credentials.json` in
-   the project root.
-
-**Per-person, done by each account once:**
-
-1. Log in, click "Scan Gmail now" or "Send reminder now" on the Review
-   page. A browser window opens for you to sign in and grant access.
-2. Your resulting token is saved under your own account (in `bills.db`,
-   not a shared file), so you won't need to re-auth every time (until it
-   expires) - and it only ever affects your own scanning/reminders, never
-   anyone else's.
-
-The app requests two scopes: `gmail.readonly` (for scanning) and
-`gmail.send` (for reminder emails) - it never sends anything except the
-reminder emails it composes itself, and never deletes or modifies
-anything in your mailbox. If your saved token predates the reminder
-feature, it only has the read-only scope; the app detects this
-automatically and the next click of "Send reminder now" (or the daily
-auto-check, once you've granted it interactively once) prompts you to
-re-consent and add the send permission.
-
-`credentials.json`, `bills.db`, and `flask_secret_key.txt` are all
-gitignored since they're either secrets or local/private data - don't
-commit them. (A legacy `token.json` file may exist from before Gmail
-tokens moved into the database - it's no longer read by the app and can
-be deleted.)
-
-The daily auto-check never opens a browser or blocks a page load waiting
-on consent - if your saved token doesn't yet have `gmail.send`, it just
-skips sending silently and tries again the next day. Only clicking "Send
-reminder now" yourself can trigger the interactive consent screen.
-
-## How the Gmail matching works
-
-- Searches recent mail (default: last 45 days) for messages that look like
-  bills/invoices/statements based on subject keywords.
-- For each match, pulls a dollar amount and a due date out of the email
-  body using regex/heuristics - this is approximate and will sometimes
-  miss or misread things.
-- Inserts each new match (deduped by Gmail message ID) into a pending
-  queue on the Review page, where you edit and approve or reject it
-  before it becomes a real bill.
-- Skips any vendor you've already added manually or approved from a past
-  scan - matched by sender domain (e.g. `billing@comcast.com`) or by an
-  exact vendor name match, so recurring bills you've already tracked don't
-  keep resurfacing for review. Bills you reject are not remembered, so a
-  rejected match can come back in a later scan.
-
-To change what it searches for, edit `DEFAULT_QUERY` in `gmail_scraper.py`
-(it's a normal Gmail search string, same syntax as the Gmail search box).
-
-## How reminders work
-
-- A reminder covers every one of your unpaid bills that's overdue, due
-  within your configured lead time (see Reminder Settings - defaults to 3
-  days, customizable generally or per-vendor), or has no due date set.
-- Skipped entirely if nothing currently qualifies for you - no empty "all
-  clear" emails.
-- By default, each account's check runs at most once per calendar day,
-  triggered the next time that person loads the main dashboard - so it
-  fires the first time you open the app on a given day, not on a fixed
-  clock time. It only actually sends if Gmail is already authorized with
-  the send scope (see above).
-- For a reminder that fires on a real schedule even if nobody opens the
-  app that day, install the `daily_reminders.py` systemd timer - see
-  "Daily reminder timer" in [`deploy/README.md`](deploy/README.md). It
-  loops over every account and sends each person's own digest using their
-  own settings, bills, and Gmail connection.
-- "Send reminder now" on the Review page bypasses the once-per-day limit,
-  for testing or an on-demand nudge - and is the only path that can
-  trigger the Gmail consent screen if it hasn't been granted yet.
-- The email goes to whatever address your authorized Google account
-  reports as its own (`users.getProfile`) - i.e. the same Gmail account
-  you authorized, sent to itself.
+The application is designed for a small trusted household. If it is exposed beyond that setting, add a hardened production boundary such as HTTPS, stronger operational monitoring, backups, and a more formal account-recovery and session-management policy.
