@@ -1865,3 +1865,55 @@ button[type="submit"]:hover {
     align-content: center;
   }
 }
+
+/* ---- mobile table scroll affordance ---- */
+
+.mobile-scroll-hint {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .bills-table-scroll {
+    position: relative;
+  }
+
+  .bills-table-scroll.empty-bill-data {
+    overflow-x: visible;
+  }
+
+  .bills-table-scroll.empty-bill-data table {
+    min-width: 100%;
+  }
+
+  .bills-table-scroll.needs-horizontal-scroll::after {
+    content: "";
+    position: absolute;
+    top: 2.7rem;
+    right: 0;
+    bottom: 0;
+    width: 2.2rem;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--card-bg));
+  }
+
+  .bills-table-scroll.needs-horizontal-scroll .mobile-scroll-hint {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .35rem;
+    min-height: 1.8rem;
+    margin: 0 0 .35rem;
+    padding: .35rem .55rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+  }
+
+  .mobile-scroll-hint-arrow {
+    font-size: 1rem;
+    line-height: 1;
+  }
+}

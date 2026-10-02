@@ -252,7 +252,11 @@
       {% if search %}<a href="{{ url_for('index', tab=tab, status=status_filter) }}">Clear</a>{% endif %}
     </form>
 
-    <div class="table-scroll">
+    <div class="table-scroll bills-table-scroll {{ 'has-bill-data' if bills else 'empty-bill-data' }}">
+    <div class="mobile-scroll-hint" role="note">
+      <span>Swipe left to see paid and edit actions</span>
+      <span class="mobile-scroll-hint-arrow" aria-hidden="true">&rarr;</span>
+    </div>
     <table>
       <thead>
         <tr>
@@ -776,6 +780,19 @@
 
       show(0);
       startAutoplay();
+    })();
+
+    // Only advertise horizontal bill-table scrolling when the current
+    // rendered table actually extends beyond the visible container.
+    (function () {
+      var wrapper = document.querySelector('.bills-table-scroll.has-bill-data');
+      if (!wrapper) return;
+      var table = wrapper.querySelector('table');
+      function syncScrollHint() {
+        wrapper.classList.toggle('needs-horizontal-scroll', table.scrollWidth > wrapper.clientWidth + 1);
+      }
+      syncScrollHint();
+      window.addEventListener('resize', syncScrollHint);
     })();
 
     // Add-bill / Add-income modals - same open/close/backdrop-click
