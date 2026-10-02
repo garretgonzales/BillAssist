@@ -104,7 +104,14 @@
       </a>
     </div>
 
-    <div class="pie-grid">
+    <div class="pie-carousel" id="pie-carousel" aria-label="Bill charts">
+    <button type="button" class="pie-carousel-control pie-carousel-prev" data-carousel-direction="-1" aria-label="Show previous chart">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m15 18-6-6 6-6"></path>
+      </svg>
+    </button>
+    <div class="pie-grid-viewport">
+    <div class="pie-grid" aria-live="polite">
     <div class="pie-row">
       <svg viewBox="0 0 140 140" class="donut" role="img" aria-label="This month's bills by category">
         <circle cx="70" cy="70" r="{{ 52 }}" class="donut-track"></circle>
@@ -165,6 +172,17 @@
         <li class="hint">No bills paid this month yet.</li>
         {% endfor %}
       </ul>
+    </div>
+    </div>
+    </div>
+    <button type="button" class="pie-carousel-control pie-carousel-next" data-carousel-direction="1" aria-label="Show next chart">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m9 18 6-6-6-6"></path>
+      </svg>
+    </button>
+    <div class="pie-carousel-dots" role="tablist" aria-label="Choose bill chart">
+      <button type="button" class="pie-carousel-dot active" role="tab" aria-selected="true" aria-label="This month's bills" data-carousel-index="0"></button>
+      <button type="button" class="pie-carousel-dot" role="tab" aria-selected="false" aria-label="Paid this month" data-carousel-index="1"></button>
     </div>
     </div>
   </section>
@@ -692,6 +710,73 @@
         });
       });
     });
+
+    // Overview-only carousel for the two donut charts. The rest of the
+    // dashboard stays fixed; chart navigation supports buttons, dots, and
+    // touch swipes, while pausing autoplay whenever the user is interacting.
+    (function () {
+      var carousel = document.getElementById('pie-carousel');
+      if (!carousel) return;
+      var track = carousel.querySelector('.pie-grid');
+      var slides = Array.prototype.slice.call(track.querySelectorAll('.pie-row'));
+      var dots = Array.prototype.slice.call(carousel.querySelectorAll('.pie-carousel-dot'));
+      var index = 0;
+      var timer;
+      var touchStartX = null;
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function show(nextIndex) {
+        index = (nextIndex + slides.length) % slides.length;
+        track.style.transform = 'translateX(-' + (index * 100) + '%)';
+        slides.forEach(function (slide, i) {
+          slide.setAttribute('aria-hidden', i === index ? 'false' : 'true');
+        });
+        dots.forEach(function (dot, i) {
+          var selected = i === index;
+          dot.classList.toggle('active', selected);
+          dot.setAttribute('aria-selected', String(selected));
+        });
+      }
+
+      function startAutoplay() {
+        window.clearInterval(timer);
+        if (reduceMotion) return;
+        timer = window.setInterval(function () { show(index + 1); }, 6500);
+      }
+
+      carousel.querySelectorAll('[data-carousel-direction]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          show(index + Number(button.dataset.carouselDirection));
+          startAutoplay();
+        });
+      });
+      dots.forEach(function (dot) {
+        dot.addEventListener('click', function () {
+          show(Number(dot.dataset.carouselIndex));
+          startAutoplay();
+        });
+      });
+      carousel.addEventListener('mouseenter', function () { window.clearInterval(timer); });
+      carousel.addEventListener('mouseleave', startAutoplay);
+      carousel.addEventListener('focusin', function () { window.clearInterval(timer); });
+      carousel.addEventListener('focusout', function () {
+        if (!carousel.contains(document.activeElement)) startAutoplay();
+      });
+      carousel.addEventListener('touchstart', function (event) {
+        touchStartX = event.changedTouches[0].clientX;
+        window.clearInterval(timer);
+      }, { passive: true });
+      carousel.addEventListener('touchend', function (event) {
+        if (touchStartX === null) return;
+        var distance = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(distance) > 40) show(index + (distance < 0 ? 1 : -1));
+        touchStartX = null;
+        startAutoplay();
+      }, { passive: true });
+
+      show(0);
+      startAutoplay();
+    })();
 
     // Add-bill / Add-income modals - same open/close/backdrop-click
     // behavior for both, just different element ids.
